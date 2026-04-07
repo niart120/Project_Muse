@@ -374,16 +374,16 @@ Phase 1 では統合テストは設けない（描画コードはカバレッジ
 
 ## 6. 実装チェックリスト
 
-- [ ] `params.ts` 全面刷新
-- [ ] `simulation.ts` 全面書き換え（class → 関数型）
-  - [ ] `createNodeState` 実装
-  - [ ] `updateNodePositions` 実装
-  - [ ] `computeDistanceEdges` 実装
-  - [ ] `forceGreatCircle` オプション実装
-- [ ] `index.ts` 描画コード更新（`Points` + `LineSegments`）
-- [ ] `mod.ts` export 調整
-- [ ] `core/renderer.ts` ライティング調整
-- [ ] `params.test.ts` 更新
-- [ ] `simulation.test.ts` 全面書き換え
-- [ ] テスト実行・全パス確認
-- [ ] レビュー完了
+- [x] `params.ts` 全面刷新
+- [x] `simulation.ts` 全面書き換え（class → 関数型）
+  - [x] `createNodeState` 実装
+  - [x] `updateNodePositions` 実装
+  - [x] `computeDistanceEdges` 実装
+  - [x] `forceGreatCircle` オプション実装
+- [x] `index.ts` 描画コード更新（`Points` + `LineSegments`）
+- [x] `mod.ts` export 調整
+- [x] `core/renderer.ts` ライティング調整
+- [x] `params.test.ts` 更新
+- [x] `simulation.test.ts` 全面書き換え
+- [x] テスト実行・全パス確認
+- [x] レビュー完了

@@ -36,8 +36,8 @@ Phase 1 の距離閾値方式はノード密度の偏りに弱い。密集領域
 
 ### 1.5 着手条件
 
-- [ ] Phase 1 の実装・テスト完了
-- [ ] `NodeState` / `EdgeResult` 型が安定している
+- [x] Phase 1 の実装・テスト完了
+- [x] `NodeState` / `EdgeResult` 型が安定している
 
 ## 2. 対象ファイル
 
@@ -326,19 +326,19 @@ Phase 2 でも統合テストは設けない。
 
 ## 6. 実装チェックリスト
 
-- [ ] `params.ts` にエッジ関連パラメータ追加
-- [ ] `EdgeStrategy` 型・`edgeStrategies` マップ定義
-- [ ] `edges/` ディレクトリ作成・モジュール分割
-- [ ] `computeDistanceEdges` を `edges/distance.ts` に移設
-- [ ] `computeKnnEdges` 実装
+- [x] `params.ts` にエッジ関連パラメータ追加
+- [x] `EdgeStrategy` 型・`edgeStrategies` マップ定義
+- [x] `edges/` ディレクトリ作成・モジュール分割
+- [x] `computeDistanceEdges` を `edges/distance.ts` に移設
+- [x] `computeKnnEdges` 実装
 - [x] `computeDelaunayEdges` — 断念（動的ノードでのチラつきが不可避のため）
-- [ ] `computeMstEdges` 実装（Kruskal + Union-Find）
-- [ ] `computeGabrielEdges` 実装
-- [ ] `geodesicArc` 実装（slerp ベース）
-- [ ] `index.ts` に測地線弧描画モード追加
-- [ ] GUI にアルゴリズム切替・パラメータ追加
-- [ ] `mod.ts` export 更新
-- [ ] 全アルゴリズムのユニットテスト
-- [ ] 100 ノードでの各アルゴリズム実行時間を計測し 50 ms 以内を確認
-- [ ] テスト実行・全パス確認
-- [ ] レビュー完了
+- [x] `computeMstEdges` 実装（Kruskal + Union-Find）
+- [x] `computeGabrielEdges` 実装
+- [x] `geodesicArc` 実装（slerp ベース）
+- [x] `index.ts` に測地線弧描画モード追加
+- [x] GUI にアルゴリズム切替・パラメータ追加
+- [x] `mod.ts` export 更新
+- [x] 全アルゴリズムのユニットテスト
+- [x] 100 ノードでの各アルゴリズム実行時間を計測し 50 ms 以内を確認
+- [x] テスト実行・全パス確認
+- [x] レビュー完了
