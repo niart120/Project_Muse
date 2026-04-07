@@ -28,9 +28,9 @@ export function createRendererContext(): RendererContext {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // 基本ライティング
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  // 基本ライティング (Points では未使用だが将来のメッシュ追加に備え残す)
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.4);
   dirLight.position.set(10, 15, 10);
   scene.add(dirLight);
 
