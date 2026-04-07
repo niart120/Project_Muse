@@ -8,7 +8,6 @@ export {
   edgeStrategies,
   computeDistanceEdges,
   computeKnnEdges,
-  computeDelaunayEdges,
   computeMstEdges,
   computeGabrielEdges,
   geodesicArc,

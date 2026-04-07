@@ -5,7 +5,6 @@ import {
   computeKnnEdges,
   computeMstEdges,
   computeGabrielEdges,
-  computeDelaunayEdges,
   edgeStrategies,
   geodesicArc,
 } from "../../../src/models/node-garden/edges";
@@ -320,107 +319,11 @@ describe("computeGabrielEdges", () => {
   });
 });
 
-// ── Delaunay ──
-
-describe("computeDelaunayEdges", () => {
-  it("正四面体頂点 → 6 エッジ", () => {
-    // 正四面体を球面上に配置
-    const state = createFixedState([
-      1,
-      1,
-      1, // 正規化前
-      1,
-      -1,
-      -1,
-      -1,
-      1,
-      -1,
-      -1,
-      -1,
-      1,
-    ]);
-    // 球面上に正規化
-    for (let i = 0; i < 4; i++) {
-      const i3 = i * 3;
-      const len = Math.sqrt(
-        state.positions[i3] ** 2 + state.positions[i3 + 1] ** 2 + state.positions[i3 + 2] ** 2,
-      );
-      state.positions[i3] /= len;
-      state.positions[i3 + 1] /= len;
-      state.positions[i3 + 2] /= len;
-    }
-    const params = makeParams({ nodeCount: 4 });
-    const result = computeDelaunayEdges(state, params);
-    expect(result.count).toBe(6); // 完全グラフ
-  });
-
-  it("8 点でエッジ数が妥当", () => {
-    // 立方体頂点を球面射影
-    const verts: number[] = [];
-    for (let x = -1; x <= 1; x += 2) {
-      for (let y = -1; y <= 1; y += 2) {
-        for (let z = -1; z <= 1; z += 2) {
-          const len = Math.sqrt(x * x + y * y + z * z);
-          verts.push(x / len, y / len, z / len);
-        }
-      }
-    }
-    const state = createFixedState(verts);
-    const params = makeParams({ nodeCount: 8 });
-    const result = computeDelaunayEdges(state, params);
-    // 球面ドロネーのエッジ数は少なくとも N-1 以上
-    expect(result.count).toBeGreaterThanOrEqual(7);
-    // 最大は完全グラフ C(8,2)=28 だがドロネーはそれより少ない
-    expect(result.count).toBeLessThanOrEqual(28);
-  });
-
-  it("ランダム 50 ノードで凸包が妥当 (エッジ数とオイラー標数)", () => {
-    const params = makeParams({ nodeCount: 50, surfaceEpsilon: 0 });
-    const state = createNodeState(params);
-    const result = computeDelaunayEdges(state, params);
-    // 球面三角形分割: V=50, E=?, F=? でオイラー標数 V-E+F=2
-    // 三角形分割: F = 2(V-2) = 96, E = 3(V-2) = 144
-    // エッジ数は三角形分割の理論値付近であるべき
-    expect(result.count).toBeGreaterThanOrEqual(50 - 1);
-    expect(result.count).toBeLessThanOrEqual(3 * (50 - 2) + 10); // 若干のマージン
-  });
-
-  it("連続フレームで安定した結果を返す", () => {
-    const params = makeParams({ nodeCount: 30, surfaceEpsilon: 0 });
-    const state = createNodeState(params);
-    // 同一位置で 2 回計算 → 同じ結果
-    const r1 = computeDelaunayEdges(state, params);
-    const r2 = computeDelaunayEdges(state, params);
-    expect(r1.count).toBe(r2.count);
-    for (let i = 0; i < r1.pairs.length; i++) {
-      expect(r1.pairs[i]).toBe(r2.pairs[i]);
-    }
-  });
-
-  it("微小な位置変化でエッジが大幅に変わらない", () => {
-    const params = makeParams({ nodeCount: 30, surfaceEpsilon: 0 });
-    const state = createNodeState(params);
-    const r1 = computeDelaunayEdges(state, params);
-
-    // 各座標を 1e-6 だけ摂動
-    const perturbed = new Float32Array(state.positions);
-    for (let i = 0; i < perturbed.length; i++) {
-      perturbed[i] += ((i % 3) - 1) * 1e-6;
-    }
-    const state2 = { ...state, positions: perturbed };
-    const r2 = computeDelaunayEdges(state2, params);
-
-    // エッジ数の変化が全体の 30% 以内
-    const diff = Math.abs(r1.count - r2.count);
-    expect(diff).toBeLessThan(r1.count * 0.3);
-  });
-});
-
 // ── edgeStrategies ──
 
 describe("edgeStrategies", () => {
   it("全アルゴリズムが EdgeStrategy 型に適合", () => {
-    const algorithms = ["distance", "knn", "delaunay", "mst", "gabriel"] as const;
+    const algorithms = ["distance", "knn", "mst", "gabriel"] as const;
     const params = makeParams({ nodeCount: 10, surfaceEpsilon: 0 });
     const state = createNodeState(params);
 

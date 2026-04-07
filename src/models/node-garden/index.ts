@@ -116,51 +116,71 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
   nodesFolder
     .add(params, "nodeCount", 10, 200, 1)
     .name("Count")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title = "Number of nodes placed on the sphere surface";
   nodesFolder
     .add(params, "sphereRadius", 0.5, 5, 0.1)
     .name("Sphere Radius")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title =
+    "Radius of the sphere on which nodes are placed";
   nodesFolder
     .add(params, "surfaceEpsilon", 0, 0.1, 0.005)
     .name("ε Offset")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title =
+    "Random radial offset from the sphere surface (0 = exactly on surface)";
   nodesFolder
     .add(params, "pointSize", 0.01, 0.2, 0.005)
     .name("Point Size")
     .onChange(() => {
       pointsMat.size = params.pointSize;
-    });
+    }).domElement.title = "Visual size of each node point";
 
   const motionFolder = gui.addFolder("Motion");
-  motionFolder.add(params, "speedMultiplier", 0, 5, 0.1).name("Speed");
+  motionFolder.add(params, "speedMultiplier", 0, 5, 0.1).name("Speed").domElement.title =
+    "Global speed multiplier (0 = paused)";
   motionFolder
     .add(params, "angularSpeedMin", 0.01, 1, 0.01)
     .name("ω Min")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title = "Minimum angular velocity per node (rad/s)";
   motionFolder
     .add(params, "angularSpeedMax", 0.01, 2, 0.01)
     .name("ω Max")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title = "Maximum angular velocity per node (rad/s)";
   motionFolder
     .add(params, "forceGreatCircle")
     .name("Great Circle")
-    .onChange(() => rebuildSim());
+    .onChange(() => rebuildSim()).domElement.title =
+    "Force all nodes to orbit along great circles (no axial tilt)";
 
   const edgesFolder = gui.addFolder("Edges");
   edgesFolder
-    .add(params, "edgeAlgorithm", ["distance", "knn", "delaunay", "mst", "gabriel"])
-    .name("Algorithm");
-  edgesFolder.add(params, "edgeMaxDistance", 0.1, 2, 0.05).name("Max Distance");
-  edgesFolder.add(params, "knnK", 1, 15, 1).name("k-NN k");
-  edgesFolder.add(params, "edgePathMode", ["straight", "geodesic"]).name("Edge Path");
-  edgesFolder.add(params, "geodesicSegments", 4, 24, 2).name("Arc Segments");
+    .add(params, "edgeAlgorithm", ["distance", "knn", "mst", "gabriel"])
+    .name("Algorithm")
+    .onChange(() => syncAlgorithmGui()).domElement.title =
+    "Edge algorithm: distance (threshold), knn (k-nearest), mst (minimum spanning tree), gabriel (Gabriel graph)";
+  const maxDistCtrl = edgesFolder.add(params, "edgeMaxDistance", 0.1, 2, 0.05).name("Max Distance");
+  maxDistCtrl.domElement.title =
+    "Connect nodes within this chord distance (distance algorithm only)";
+  const knnKCtrl = edgesFolder.add(params, "knnK", 1, 15, 1).name("k-NN k");
+  knnKCtrl.domElement.title =
+    "Number of nearest neighbors to connect per node (knn algorithm only)";
+  edgesFolder
+    .add(params, "edgePathMode", ["straight", "geodesic"])
+    .name("Edge Path").domElement.title =
+    "Draw edges as straight lines or geodesic arcs along the sphere surface";
+  edgesFolder.add(params, "geodesicSegments", 4, 24, 2).name("Arc Segments").domElement.title =
+    "Number of subdivisions per geodesic arc (higher = smoother curves)";
   edgesFolder
     .add(params, "edgeOpacity", 0, 1, 0.01)
     .name("Opacity")
     .onChange(() => {
       lineMat.opacity = params.edgeOpacity;
-    });
+    }).domElement.title = "Edge line opacity (0 = invisible, 1 = fully opaque)";
+
+  function syncAlgorithmGui(): void {
+    maxDistCtrl.show(params.edgeAlgorithm === "distance");
+    knnKCtrl.show(params.edgeAlgorithm === "knn");
+  }
+  syncAlgorithmGui();
 
   const colorsFolder = gui.addFolder("Colors");
   colorsFolder
@@ -168,19 +188,19 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
     .name("Node")
     .onChange(() => {
       pointsMat.color.set(params.nodeColor);
-    });
+    }).domElement.title = "Color of the node points";
   colorsFolder
     .addColor(params, "edgeColor")
     .name("Edge")
     .onChange(() => {
       lineMat.color.set(params.edgeColor);
-    });
+    }).domElement.title = "Color of the edge lines";
   colorsFolder
     .addColor(params, "backgroundColor")
     .name("Background")
     .onChange(() => {
       scene.background = new THREE.Color(params.backgroundColor);
-    });
+    }).domElement.title = "Scene background color";
 
   // ── 公開 API ──
   return {

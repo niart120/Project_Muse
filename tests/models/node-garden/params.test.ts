@@ -40,7 +40,7 @@ describe("defaultParams", () => {
   });
 
   it("edgeAlgorithm が有効な値", () => {
-    const valid = ["distance", "knn", "delaunay", "mst", "gabriel"];
+    const valid = ["distance", "knn", "mst", "gabriel"];
     expect(valid).toContain(defaultParams.edgeAlgorithm);
   });
 

@@ -1,5 +1,5 @@
 /** エッジ計算アルゴリズム名 */
-export type EdgeAlgorithm = "distance" | "knn" | "delaunay" | "mst" | "gabriel";
+export type EdgeAlgorithm = "distance" | "knn" | "mst" | "gabriel";
 
 /** エッジ経路の描画方式 */
 export type EdgePathMode = "straight" | "geodesic";

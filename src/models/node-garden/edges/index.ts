@@ -2,7 +2,6 @@ import type { NodeState, EdgeResult } from "../simulation";
 import type { EdgeAlgorithm, NodeGardenParams } from "../params";
 import { computeDistanceEdges } from "./distance";
 import { computeKnnEdges } from "./knn";
-import { computeDelaunayEdges } from "./delaunay";
 import { computeMstEdges } from "./mst";
 import { computeGabrielEdges } from "./gabriel";
 
@@ -12,14 +11,12 @@ export type EdgeStrategy = (state: NodeState, params: NodeGardenParams) => EdgeR
 export const edgeStrategies: Record<EdgeAlgorithm, EdgeStrategy> = {
   distance: computeDistanceEdges,
   knn: computeKnnEdges,
-  delaunay: computeDelaunayEdges,
   mst: computeMstEdges,
   gabriel: computeGabrielEdges,
 };
 
 export { computeDistanceEdges } from "./distance";
 export { computeKnnEdges } from "./knn";
-export { computeDelaunayEdges } from "./delaunay";
 export { computeMstEdges } from "./mst";
 export { computeGabrielEdges } from "./gabriel";
 export { geodesicArc } from "./geodesic";
