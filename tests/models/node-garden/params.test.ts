@@ -38,4 +38,23 @@ describe("defaultParams", () => {
     expect(defaultParams.edgeColor).toMatch(/^#[0-9a-fA-F]{6}$/);
     expect(defaultParams.backgroundColor).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
+
+  it("edgeAlgorithm が有効な値", () => {
+    const valid = ["distance", "knn", "delaunay", "mst", "gabriel"];
+    expect(valid).toContain(defaultParams.edgeAlgorithm);
+  });
+
+  it("knnK が正の整数", () => {
+    expect(defaultParams.knnK).toBeGreaterThan(0);
+    expect(Number.isInteger(defaultParams.knnK)).toBe(true);
+  });
+
+  it("edgePathMode が有効な値", () => {
+    expect(["straight", "geodesic"]).toContain(defaultParams.edgePathMode);
+  });
+
+  it("geodesicSegments が正の偶数", () => {
+    expect(defaultParams.geodesicSegments).toBeGreaterThan(0);
+    expect(defaultParams.geodesicSegments % 2).toBe(0);
+  });
 });

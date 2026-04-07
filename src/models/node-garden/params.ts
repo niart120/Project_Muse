@@ -1,3 +1,9 @@
+/** エッジ計算アルゴリズム名 */
+export type EdgeAlgorithm = "distance" | "knn" | "delaunay" | "mst" | "gabriel";
+
+/** エッジ経路の描画方式 */
+export type EdgePathMode = "straight" | "geodesic";
+
 export interface NodeGardenParams {
   // ── ノード ──
   /** ノード数 (10–200) */
@@ -20,8 +26,16 @@ export interface NodeGardenParams {
   forceGreatCircle: boolean;
 
   // ── エッジ ──
+  /** エッジ計算アルゴリズム */
+  edgeAlgorithm: EdgeAlgorithm;
   /** エッジ生成の距離閾値 */
   edgeMaxDistance: number;
+  /** k-NN の接続数 */
+  knnK: number;
+  /** エッジ経路の描画方式 */
+  edgePathMode: EdgePathMode;
+  /** 測地線弧の分割数 */
+  geodesicSegments: number;
   /** エッジの不透明度 (0–1) */
   edgeOpacity: number;
 
@@ -45,7 +59,11 @@ export const defaultParams: Readonly<NodeGardenParams> = {
   angularSpeedMax: 0.5,
   forceGreatCircle: false,
 
+  edgeAlgorithm: "distance",
   edgeMaxDistance: 0.6,
+  knnK: 5,
+  edgePathMode: "straight",
+  geodesicSegments: 12,
   edgeOpacity: 0.3,
 
   nodeColor: "#00BFFF",
