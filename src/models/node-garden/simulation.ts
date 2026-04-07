@@ -1,99 +1,232 @@
-import { NodeGardenParams, defaultParams } from "./params";
+import type { NodeGardenParams } from "./params";
 
+/** シミュレーションの全状態 */
+export interface NodeState {
+  /** 現在位置 [x,y,z] × nodeCount */
+  positions: Float32Array;
+  /** ノードごとの動径 (sphereRadius × (1 ± ε)) */
+  radii: Float32Array;
+  /** 回転軸 [ax,ay,az] × nodeCount (単位ベクトル) */
+  axes: Float32Array;
+  /** 現在の回転角 (rad) */
+  angles: Float32Array;
+  /** 角速度 (rad/s) */
+  angularSpeeds: Float32Array;
+  /** 初期位置ベクトル [x,y,z] × nodeCount */
+  initialPositions: Float32Array;
+  /** ノード数 */
+  nodeCount: number;
+}
+
+/** エッジ計算の結果 */
 export interface EdgeResult {
+  /** ノード対 [i,j] × count */
   pairs: Uint32Array;
+  /** 各ペアの距離 */
   distances: Float32Array;
+  /** エッジ数 */
   count: number;
 }
 
-/**
- * Node Garden シミュレーション。
- * ノードの位置・速度・エッジ接続を管理する純粋な計算クラス (Three.js 非依存)。
- */
-export class NodeGardenSimulation {
-  public params: NodeGardenParams;
-  public positions: Float32Array;
-  public velocities: Float32Array;
+// ── 内部ユーティリティ ──
 
-  private _nodeCount: number;
+function gaussianRandom(): number {
+  const u1 = Math.random();
+  const u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
 
-  constructor(params: Partial<NodeGardenParams> = {}) {
-    this.params = { ...defaultParams, ...params };
-    this._nodeCount = this.params.nodeCount;
-    this.positions = new Float32Array(this._nodeCount * 3);
-    this.velocities = new Float32Array(this._nodeCount * 3);
-    this.randomize();
-  }
+function randomPointOnSphere(): [number, number, number] {
+  let x: number, y: number, z: number, len: number;
+  do {
+    x = gaussianRandom();
+    y = gaussianRandom();
+    z = gaussianRandom();
+    len = Math.sqrt(x * x + y * y + z * z);
+  } while (len < 1e-8);
+  return [x / len, y / len, z / len];
+}
 
-  get nodeCount(): number {
-    return this._nodeCount;
-  }
+function rotateAroundAxis(
+  px: number,
+  py: number,
+  pz: number,
+  ax: number,
+  ay: number,
+  az: number,
+  angle: number,
+): [number, number, number] {
+  const half = angle * 0.5;
+  const sinH = Math.sin(half);
+  const cosH = Math.cos(half);
 
-  /** ノードをランダムに配置する。 */
-  randomize(): void {
-    const { spread } = this.params;
-    for (let i = 0; i < this._nodeCount; i++) {
-      const i3 = i * 3;
-      this.positions[i3] = (Math.random() - 0.5) * spread * 2;
-      this.positions[i3 + 1] = (Math.random() - 0.5) * spread * 2;
-      this.positions[i3 + 2] = (Math.random() - 0.5) * spread * 2;
+  const qw = cosH;
+  const qx = sinH * ax;
+  const qy = sinH * ay;
+  const qz = sinH * az;
 
-      this.velocities[i3] = (Math.random() - 0.5) * 0.02;
-      this.velocities[i3 + 1] = (Math.random() - 0.5) * 0.02;
-      this.velocities[i3 + 2] = (Math.random() - 0.5) * 0.02;
+  const tx = 2 * (qy * pz - qz * py);
+  const ty = 2 * (qz * px - qx * pz);
+  const tz = 2 * (qx * py - qy * px);
+
+  return [
+    px + qw * tx + (qy * tz - qz * ty),
+    py + qw * ty + (qz * tx - qx * tz),
+    pz + qw * tz + (qx * ty - qy * tx),
+  ];
+}
+
+function orthogonalizeToAxis(
+  px: number,
+  py: number,
+  pz: number,
+  ax: number,
+  ay: number,
+  az: number,
+): [number, number, number] {
+  const dot = px * ax + py * ay + pz * az;
+  let ox = px - dot * ax;
+  let oy = py - dot * ay;
+  let oz = pz - dot * az;
+  let len = Math.sqrt(ox * ox + oy * oy + oz * oz);
+
+  if (len < 1e-8) {
+    // 軸と平行: 任意の直交ベクトルを生成
+    const absX = Math.abs(ax);
+    const absY = Math.abs(ay);
+    if (absX < absY) {
+      ox = 0;
+      oy = -az;
+      oz = ay;
+    } else {
+      ox = az;
+      oy = 0;
+      oz = -ax;
     }
+    len = Math.sqrt(ox * ox + oy * oy + oz * oz);
   }
 
-  /** シミュレーションを1ステップ進める。 */
-  update(delta: number): void {
-    const speed = this.params.speed * delta;
-    const halfSpread = this.params.spread;
+  return [ox / len, oy / len, oz / len];
+}
 
-    for (let i = 0; i < this._nodeCount; i++) {
-      const i3 = i * 3;
-      for (let axis = 0; axis < 3; axis++) {
-        this.positions[i3 + axis] += this.velocities[i3 + axis] * speed;
+// ── 公開関数 ──
 
-        // 境界で反射
-        if (Math.abs(this.positions[i3 + axis]) > halfSpread) {
-          this.velocities[i3 + axis] *= -1;
-          this.positions[i3 + axis] = Math.sign(this.positions[i3 + axis]) * halfSpread;
-        }
+/** NodeState を生成し、ノードを球面上にランダム配置する */
+export function createNodeState(params: NodeGardenParams): NodeState {
+  const {
+    nodeCount,
+    sphereRadius,
+    surfaceEpsilon,
+    angularSpeedMin,
+    angularSpeedMax,
+    forceGreatCircle,
+  } = params;
+  const n = nodeCount;
+
+  const positions = new Float32Array(n * 3);
+  const radii = new Float32Array(n);
+  const axes = new Float32Array(n * 3);
+  const angles = new Float32Array(n);
+  const angularSpeeds = new Float32Array(n);
+  const initialPositions = new Float32Array(n * 3);
+
+  for (let i = 0; i < n; i++) {
+    const i3 = i * 3;
+
+    // 動径
+    const eps = surfaceEpsilon > 0 ? (Math.random() * 2 - 1) * surfaceEpsilon : 0;
+    radii[i] = sphereRadius * (1 + eps);
+
+    // 回転軸
+    const [axx, ayy, azz] = randomPointOnSphere();
+    axes[i3] = axx;
+    axes[i3 + 1] = ayy;
+    axes[i3 + 2] = azz;
+
+    // 球面上の初期位置
+    let [px, py, pz] = randomPointOnSphere();
+
+    if (forceGreatCircle) {
+      [px, py, pz] = orthogonalizeToAxis(px, py, pz, axx, ayy, azz);
+    }
+
+    initialPositions[i3] = px * radii[i];
+    initialPositions[i3 + 1] = py * radii[i];
+    initialPositions[i3 + 2] = pz * radii[i];
+
+    // 初期位置をそのまま現在位置にコピー
+    positions[i3] = initialPositions[i3];
+    positions[i3 + 1] = initialPositions[i3 + 1];
+    positions[i3 + 2] = initialPositions[i3 + 2];
+
+    // 角速度
+    angularSpeeds[i] = angularSpeedMin + Math.random() * (angularSpeedMax - angularSpeedMin);
+
+    // 初期回転角
+    angles[i] = 0;
+  }
+
+  return { positions, radii, axes, angles, angularSpeeds, initialPositions, nodeCount: n };
+}
+
+/** 全ノードの位置を回転運動で更新する */
+export function updateNodePositions(
+  state: NodeState,
+  params: NodeGardenParams,
+  delta: number,
+): void {
+  const { speedMultiplier } = params;
+  const { nodeCount, axes, angles, angularSpeeds, initialPositions, positions, radii } = state;
+
+  for (let i = 0; i < nodeCount; i++) {
+    const i3 = i * 3;
+    angles[i] += angularSpeeds[i] * speedMultiplier * delta;
+
+    const [rx, ry, rz] = rotateAroundAxis(
+      initialPositions[i3],
+      initialPositions[i3 + 1],
+      initialPositions[i3 + 2],
+      axes[i3],
+      axes[i3 + 1],
+      axes[i3 + 2],
+      angles[i],
+    );
+
+    positions[i3] = rx;
+    positions[i3 + 1] = ry;
+    positions[i3 + 2] = rz;
+  }
+}
+
+/** 距離閾値以内のノード対を返す */
+export function computeDistanceEdges(state: NodeState, maxDistance: number): EdgeResult {
+  const maxDistSq = maxDistance * maxDistance;
+  const { nodeCount, positions } = state;
+
+  const tmpPairs: number[] = [];
+  const tmpDists: number[] = [];
+
+  for (let i = 0; i < nodeCount; i++) {
+    const ix = positions[i * 3];
+    const iy = positions[i * 3 + 1];
+    const iz = positions[i * 3 + 2];
+
+    for (let j = i + 1; j < nodeCount; j++) {
+      const dx = ix - positions[j * 3];
+      const dy = iy - positions[j * 3 + 1];
+      const dz = iz - positions[j * 3 + 2];
+      const distSq = dx * dx + dy * dy + dz * dz;
+
+      if (distSq < maxDistSq) {
+        tmpPairs.push(i, j);
+        tmpDists.push(Math.sqrt(distSq));
       }
     }
   }
 
-  /** edgeMaxDistance 以内のノード対を計算して返す。 */
-  computeEdges(): EdgeResult {
-    const maxDist = this.params.edgeMaxDistance;
-    const maxDistSq = maxDist * maxDist;
-    const n = this._nodeCount;
-
-    const tmpPairs: number[] = [];
-    const tmpDists: number[] = [];
-
-    for (let i = 0; i < n; i++) {
-      const ix = this.positions[i * 3];
-      const iy = this.positions[i * 3 + 1];
-      const iz = this.positions[i * 3 + 2];
-
-      for (let j = i + 1; j < n; j++) {
-        const dx = ix - this.positions[j * 3];
-        const dy = iy - this.positions[j * 3 + 1];
-        const dz = iz - this.positions[j * 3 + 2];
-        const distSq = dx * dx + dy * dy + dz * dz;
-
-        if (distSq < maxDistSq) {
-          tmpPairs.push(i, j);
-          tmpDists.push(Math.sqrt(distSq));
-        }
-      }
-    }
-
-    return {
-      pairs: new Uint32Array(tmpPairs),
-      distances: new Float32Array(tmpDists),
-      count: tmpDists.length,
-    };
-  }
+  return {
+    pairs: new Uint32Array(tmpPairs),
+    distances: new Float32Array(tmpDists),
+    count: tmpDists.length,
+  };
 }
