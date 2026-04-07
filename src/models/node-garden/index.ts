@@ -1,23 +1,29 @@
 import * as THREE from "three";
 import type { RendererContext } from "../../core";
 import { createGui } from "../../core";
-import { NodeGardenSimulation } from "./simulation";
-import { NodeGardenParams, defaultParams } from "./params";
+import { createNodeState, updateNodePositions, computeDistanceEdges } from "./simulation";
+import type { NodeGardenParams } from "./params";
+import type { NodeState } from "./simulation";
+import { defaultParams } from "./params";
 
-/**
- * Node Garden テーマ。
- * RendererContext を受け取り、シーンへの追加・GUI構築・アニメーションループを担当。
- */
 export function setup(ctx: RendererContext): { update(delta: number): void; dispose(): void } {
   const { scene } = ctx;
   const params: NodeGardenParams = { ...defaultParams };
-  let sim = new NodeGardenSimulation(params);
+  let state: NodeState = createNodeState(params);
 
-  // ── ノード (InstancedMesh) ──
-  const sphereGeo = new THREE.SphereGeometry(1, 16, 12);
-  const nodeMat = new THREE.MeshStandardMaterial({ color: params.nodeColor });
-  let instancedNodes = new THREE.InstancedMesh(sphereGeo, nodeMat, params.nodeCount);
-  scene.add(instancedNodes);
+  // ── 背景 ──
+  scene.background = new THREE.Color(params.backgroundColor);
+
+  // ── ノード (Points) ──
+  let pointsGeo = new THREE.BufferGeometry();
+  pointsGeo.setAttribute("position", new THREE.BufferAttribute(state.positions, 3));
+  const pointsMat = new THREE.PointsMaterial({
+    color: params.nodeColor,
+    size: params.pointSize,
+    sizeAttenuation: true,
+  });
+  let points = new THREE.Points(pointsGeo, pointsMat);
+  scene.add(points);
 
   // ── エッジ (LineSegments) ──
   const lineGeo = new THREE.BufferGeometry();
@@ -30,32 +36,20 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
   scene.add(edgeLines);
 
   // ── ヘルパー ──
-  const _dummy = new THREE.Object3D();
-
-  function syncInstances(): void {
-    for (let i = 0; i < sim.nodeCount; i++) {
-      _dummy.position.set(sim.positions[i * 3], sim.positions[i * 3 + 1], sim.positions[i * 3 + 2]);
-      _dummy.scale.setScalar(params.nodeRadius);
-      _dummy.updateMatrix();
-      instancedNodes.setMatrixAt(i, _dummy.matrix);
-    }
-    instancedNodes.instanceMatrix.needsUpdate = true;
-  }
-
   function syncEdges(): void {
-    const { pairs, count } = sim.computeEdges();
+    const { pairs, count } = computeDistanceEdges(state, params.edgeMaxDistance);
     const verts = new Float32Array(count * 2 * 3);
 
     for (let e = 0; e < count; e++) {
       const a = pairs[e * 2];
       const b = pairs[e * 2 + 1];
       const o = e * 6;
-      verts[o] = sim.positions[a * 3];
-      verts[o + 1] = sim.positions[a * 3 + 1];
-      verts[o + 2] = sim.positions[a * 3 + 2];
-      verts[o + 3] = sim.positions[b * 3];
-      verts[o + 4] = sim.positions[b * 3 + 1];
-      verts[o + 5] = sim.positions[b * 3 + 2];
+      verts[o] = state.positions[a * 3];
+      verts[o + 1] = state.positions[a * 3 + 1];
+      verts[o + 2] = state.positions[a * 3 + 2];
+      verts[o + 3] = state.positions[b * 3];
+      verts[o + 4] = state.positions[b * 3 + 1];
+      verts[o + 5] = state.positions[b * 3 + 2];
     }
 
     lineGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
@@ -63,11 +57,14 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
   }
 
   function rebuildSim(): void {
-    scene.remove(instancedNodes);
-    instancedNodes.dispose();
-    sim = new NodeGardenSimulation(params);
-    instancedNodes = new THREE.InstancedMesh(sphereGeo, nodeMat, params.nodeCount);
-    scene.add(instancedNodes);
+    state = createNodeState(params);
+
+    scene.remove(points);
+    pointsGeo.dispose();
+    pointsGeo = new THREE.BufferGeometry();
+    pointsGeo.setAttribute("position", new THREE.BufferAttribute(state.positions, 3));
+    points = new THREE.Points(pointsGeo, pointsMat);
+    scene.add(points);
   }
 
   // ── GUI ──
@@ -75,17 +72,41 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
 
   const nodesFolder = gui.addFolder("Nodes");
   nodesFolder
-    .add(params, "nodeCount", 10, 500, 1)
+    .add(params, "nodeCount", 10, 200, 1)
     .name("Count")
     .onChange(() => rebuildSim());
-  nodesFolder.add(params, "nodeRadius", 0.01, 0.5, 0.01).name("Radius");
   nodesFolder
-    .add(params, "spread", 2, 30, 0.5)
-    .name("Spread")
+    .add(params, "sphereRadius", 0.5, 5, 0.1)
+    .name("Sphere Radius")
+    .onChange(() => rebuildSim());
+  nodesFolder
+    .add(params, "surfaceEpsilon", 0, 0.1, 0.005)
+    .name("ε Offset")
+    .onChange(() => rebuildSim());
+  nodesFolder
+    .add(params, "pointSize", 0.01, 0.2, 0.005)
+    .name("Point Size")
+    .onChange(() => {
+      pointsMat.size = params.pointSize;
+    });
+
+  const motionFolder = gui.addFolder("Motion");
+  motionFolder.add(params, "speedMultiplier", 0, 5, 0.1).name("Speed");
+  motionFolder
+    .add(params, "angularSpeedMin", 0.01, 1, 0.01)
+    .name("ω Min")
+    .onChange(() => rebuildSim());
+  motionFolder
+    .add(params, "angularSpeedMax", 0.01, 2, 0.01)
+    .name("ω Max")
+    .onChange(() => rebuildSim());
+  motionFolder
+    .add(params, "forceGreatCircle")
+    .name("Great Circle")
     .onChange(() => rebuildSim());
 
   const edgesFolder = gui.addFolder("Edges");
-  edgesFolder.add(params, "edgeMaxDistance", 0.5, 10, 0.1).name("Max Distance");
+  edgesFolder.add(params, "edgeMaxDistance", 0.1, 2, 0.05).name("Max Distance");
   edgesFolder
     .add(params, "edgeOpacity", 0, 1, 0.01)
     .name("Opacity")
@@ -98,7 +119,7 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
     .addColor(params, "nodeColor")
     .name("Node")
     .onChange(() => {
-      nodeMat.color.set(params.nodeColor);
+      pointsMat.color.set(params.nodeColor);
     });
   colorsFolder
     .addColor(params, "edgeColor")
@@ -106,23 +127,26 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
     .onChange(() => {
       lineMat.color.set(params.edgeColor);
     });
-
-  gui.add(params, "speed", 0, 5, 0.1).name("Speed");
+  colorsFolder
+    .addColor(params, "backgroundColor")
+    .name("Background")
+    .onChange(() => {
+      scene.background = new THREE.Color(params.backgroundColor);
+    });
 
   // ── 公開 API ──
   return {
     update(delta: number): void {
-      sim.update(delta);
-      syncInstances();
+      updateNodePositions(state, params, delta);
+      pointsGeo.attributes.position.needsUpdate = true;
       syncEdges();
     },
     dispose(): void {
       gui.destroy();
-      scene.remove(instancedNodes);
+      scene.remove(points);
       scene.remove(edgeLines);
-      instancedNodes.dispose();
-      sphereGeo.dispose();
-      nodeMat.dispose();
+      pointsGeo.dispose();
+      pointsMat.dispose();
       lineGeo.dispose();
       lineMat.dispose();
     },
