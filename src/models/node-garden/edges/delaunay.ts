@@ -27,10 +27,13 @@ export function computeDelaunayEdges(state: NodeState, _params: NodeGardenParams
     return buildTriangleResult(positions, [0, 1, 2]);
   }
 
-  // 凸包をインクリメンタルに構築する
-  const faces = convexHull(positions, nodeCount);
+  // co-spherical 退化を回避するため、決定的な微小摂動を加える
+  const perturbed = perturbPositions(positions, nodeCount);
 
-  // 面の辺を抽出（重複除去）
+  // 凸包をインクリメンタルに構築する（摂動座標で計算）
+  const faces = convexHull(perturbed, nodeCount);
+
+  // 面の辺を抽出（重複除去）。距離は元の座標で計算する
   const edgeSet = new Set<number>();
   for (let f = 0; f < faces.length; f += 3) {
     const a = faces[f];
@@ -64,6 +67,23 @@ function addEdge(set: Set<number>, a: number, b: number, n: number): void {
   const lo = Math.min(a, b);
   const hi = Math.max(a, b);
   set.add(lo * n + hi);
+}
+
+/**
+ * co-spherical 退化を回避するための決定的摂動。
+ * 各頂点にインデックス依存の微小オフセットを加え、
+ * 4 点が厳密に同一球面上に乗る状況を崩す。
+ */
+function perturbPositions(positions: Float32Array, n: number): Float32Array {
+  const eps = 1e-8;
+  const out = new Float32Array(positions.length);
+  for (let i = 0; i < n; i++) {
+    const i3 = i * 3;
+    out[i3] = positions[i3] + eps * (((i * 73 + 1) % 53) / 53 - 0.5);
+    out[i3 + 1] = positions[i3 + 1] + eps * (((i * 97 + 3) % 59) / 59 - 0.5);
+    out[i3 + 2] = positions[i3 + 2] + eps * (((i * 113 + 7) % 67) / 67 - 0.5);
+  }
+  return out;
 }
 
 function buildTriangleResult(positions: Float32Array, indices: number[]): EdgeResult {
@@ -155,6 +175,8 @@ function convexHull(positions: Float32Array, n: number): number[] {
     faces = faces.filter((_, idx) => !visibleSet.has(idx));
 
     // ホライズンエッジから p への新しい面を生成
+    // ホライズン辺は可視面の巻き方向で格納されている。
+    // 残存面(非可視)は逆向きなので、同じ方向 [a, b, p] が正しい外向き法線を与える。
     for (const [a, b] of horizon) {
       faces.push([a, b, p]);
     }

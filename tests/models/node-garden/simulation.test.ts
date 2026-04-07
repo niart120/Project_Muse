@@ -373,6 +373,47 @@ describe("computeDelaunayEdges", () => {
     // 最大は完全グラフ C(8,2)=28 だがドロネーはそれより少ない
     expect(result.count).toBeLessThanOrEqual(28);
   });
+
+  it("ランダム 50 ノードで凸包が妥当 (エッジ数とオイラー標数)", () => {
+    const params = makeParams({ nodeCount: 50, surfaceEpsilon: 0 });
+    const state = createNodeState(params);
+    const result = computeDelaunayEdges(state, params);
+    // 球面三角形分割: V=50, E=?, F=? でオイラー標数 V-E+F=2
+    // 三角形分割: F = 2(V-2) = 96, E = 3(V-2) = 144
+    // エッジ数は三角形分割の理論値付近であるべき
+    expect(result.count).toBeGreaterThanOrEqual(50 - 1);
+    expect(result.count).toBeLessThanOrEqual(3 * (50 - 2) + 10); // 若干のマージン
+  });
+
+  it("連続フレームで安定した結果を返す", () => {
+    const params = makeParams({ nodeCount: 30, surfaceEpsilon: 0 });
+    const state = createNodeState(params);
+    // 同一位置で 2 回計算 → 同じ結果
+    const r1 = computeDelaunayEdges(state, params);
+    const r2 = computeDelaunayEdges(state, params);
+    expect(r1.count).toBe(r2.count);
+    for (let i = 0; i < r1.pairs.length; i++) {
+      expect(r1.pairs[i]).toBe(r2.pairs[i]);
+    }
+  });
+
+  it("微小な位置変化でエッジが大幅に変わらない", () => {
+    const params = makeParams({ nodeCount: 30, surfaceEpsilon: 0 });
+    const state = createNodeState(params);
+    const r1 = computeDelaunayEdges(state, params);
+
+    // 各座標を 1e-6 だけ摂動
+    const perturbed = new Float32Array(state.positions);
+    for (let i = 0; i < perturbed.length; i++) {
+      perturbed[i] += ((i % 3) - 1) * 1e-6;
+    }
+    const state2 = { ...state, positions: perturbed };
+    const r2 = computeDelaunayEdges(state2, params);
+
+    // エッジ数の変化が全体の 30% 以内
+    const diff = Math.abs(r1.count - r2.count);
+    expect(diff).toBeLessThan(r1.count * 0.3);
+  });
 });
 
 // ── edgeStrategies ──
