@@ -74,7 +74,7 @@
 - `params.ts` 全面刷新、GUI 基本コントロール
 - シミュレーションのユニットテスト
 
-**詳細**: [PHASE1_SPHERE_NODES.md](./PHASE1_SPHERE_NODES.md)
+**詳細**: [PHASE1_SPHERE_NODES.md](../local_002/PHASE1_SPHERE_NODES.md)
 
 ### Phase 2: エッジアルゴリズム
 
@@ -89,7 +89,7 @@
 - 平面グラフ要件: 球面射影でエッジが交差しないことを保証するモード
 - 各アルゴリズムのユニットテスト
 
-**詳細**: [PHASE2_EDGE_ALGORITHMS.md](./PHASE2_EDGE_ALGORITHMS.md)
+**詳細**: [PHASE2_EDGE_ALGORITHMS.md](../local_003/PHASE2_EDGE_ALGORITHMS.md)
 
 ### Phase 3: ビジュアル仕上げ
 
@@ -105,7 +105,7 @@
 - TSL ベースのブルームポストプロセス（WebGPURenderer 互換）
 - 球体ワイヤーフレーム / 緯度経度グリッドオーバーレイ（オプション）
 
-**詳細**: [PHASE3_VISUAL_POLISH.md](./PHASE3_VISUAL_POLISH.md)
+**詳細**: [PHASE3_VISUAL_POLISH.md](../local_004/PHASE3_VISUAL_POLISH.md)
 
 ### Phase 4: 動的機能 + 最適化
 
@@ -115,7 +115,7 @@
 - GUI 整理（フォルダ構成、操作性向上）
 - パフォーマンス最適化（100 ノード時の GUI 操作 500 ms 以内を検証）
 
-**詳細**: [PHASE4_DYNAMIC_OPTIMIZATION.md](./PHASE4_DYNAMIC_OPTIMIZATION.md)
+**詳細**: [PHASE4_DYNAMIC_OPTIMIZATION.md](../local_005/PHASE4_DYNAMIC_OPTIMIZATION.md)
 
 ### 将来検討（スコープ外）
 
