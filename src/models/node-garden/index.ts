@@ -3,9 +3,9 @@ import type { RendererContext } from "../../core";
 import { createGui } from "../../core";
 import { createNodeState, updateNodePositions } from "./simulation";
 import { edgeStrategies, geodesicArc } from "./edges";
-import type { NodeGardenParams } from "./params";
+import type { NodeGardenParams, ColorPreset } from "./params";
 import type { NodeState, EdgeResult } from "./simulation";
-import { defaultParams } from "./params";
+import { defaultParams, colorPresets } from "./params";
 import {
   createNodeShapeMaterial,
   shapeIndexMap,
@@ -425,6 +425,35 @@ export function setup(ctx: RendererContext): ThemeHandle {
     }).domElement.title = "Grid line color";
 
   const colorsFolder = gui.addFolder("Colors");
+
+  // プリセット適用時に GUI コントローラの表示値も更新するため参照を保持
+  const presetState = { current: "hud-cyan" as string };
+  function applyColorPreset(name: ColorPreset): void {
+    const preset = colorPresets[name];
+    params.nodeColor = preset.nodeColor;
+    params.edgeColor = preset.edgeColor;
+    params.sphereGridColor = preset.sphereGridColor;
+    params.sphereBaseColor = preset.sphereBaseColor;
+    params.backgroundColor = preset.backgroundColor;
+
+    // マテリアルに反映
+    nodeShader.colorUniform.value.set(params.nodeColor);
+    signalMat.color.set(params.nodeColor);
+    lineMat.color.set(params.edgeColor);
+    gridMat.color.set(params.sphereGridColor);
+    sphereMat.color.set(params.sphereBaseColor);
+    scene.background = new THREE.Color(params.backgroundColor);
+
+    // GUI 表示を同期
+    gui.controllersRecursive().forEach((c) => c.updateDisplay());
+  }
+
+  colorsFolder
+    .add(presetState, "current", ["hud-cyan", "emerald", "amber", "frost", "infrared"])
+    .name("Preset")
+    .onChange((v: string) => {
+      applyColorPreset(v as ColorPreset);
+    }).domElement.title = "Color preset: apply a full color scheme";
   colorsFolder
     .addColor(params, "nodeColor")
     .name("Node")

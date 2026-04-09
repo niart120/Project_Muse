@@ -7,8 +7,10 @@ export type {
   NodeShape,
   EdgeStyle,
   SphereBaseMode,
+  ColorPreset,
+  ColorPresetColors,
 } from "./params";
-export { defaultParams } from "./params";
+export { defaultParams, colorPresets } from "./params";
 export type { NodeState, EdgeResult } from "./simulation";
 export { createNodeState, updateNodePositions } from "./simulation";
 export type { EdgeStrategy } from "./edges";

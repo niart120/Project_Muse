@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { defaultParams } from "../../../src/models/node-garden/params";
+import { defaultParams, colorPresets } from "../../../src/models/node-garden/params";
+import type { ColorPreset } from "../../../src/models/node-garden/params";
 
 describe("defaultParams", () => {
   it("nodeCount が正の整数", () => {
@@ -125,5 +126,37 @@ describe("defaultParams", () => {
 
   it("sphereBaseColor と backgroundColor が異なる", () => {
     expect(defaultParams.sphereBaseColor).not.toBe(defaultParams.backgroundColor);
+  });
+});
+
+describe("colorPresets", () => {
+  const presetNames: ColorPreset[] = ["hud-cyan", "emerald", "amber", "frost", "infrared"];
+  const hexPattern = /^#[0-9a-fA-F]{6}$/;
+
+  it("全プリセットが定義されている", () => {
+    for (const name of presetNames) {
+      expect(colorPresets[name]).toBeDefined();
+    }
+  });
+
+  it.each(presetNames)("%s: 全色が有効な hex 文字列", (name) => {
+    const preset = colorPresets[name];
+    expect(preset.nodeColor).toMatch(hexPattern);
+    expect(preset.edgeColor).toMatch(hexPattern);
+    expect(preset.sphereGridColor).toMatch(hexPattern);
+    expect(preset.sphereBaseColor).toMatch(hexPattern);
+    expect(preset.backgroundColor).toMatch(hexPattern);
+  });
+
+  it.each(presetNames)("%s: sphereBaseColor と backgroundColor が異なる", (name) => {
+    const preset = colorPresets[name];
+    expect(preset.sphereBaseColor).not.toBe(preset.backgroundColor);
+  });
+
+  it("hud-cyan プリセットが defaultParams と一致する", () => {
+    const cyan = colorPresets["hud-cyan"];
+    expect(cyan.nodeColor).toBe(defaultParams.nodeColor);
+    expect(cyan.edgeColor).toBe(defaultParams.edgeColor);
+    expect(cyan.backgroundColor).toBe(defaultParams.backgroundColor);
   });
 });

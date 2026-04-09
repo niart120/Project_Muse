@@ -95,6 +95,61 @@ export interface NodeGardenParams {
   backgroundColor: string;
 }
 
+/** カラープリセット名 */
+export type ColorPreset = "hud-cyan" | "emerald" | "amber" | "frost" | "infrared";
+
+/** カラープリセットが定義する色群 */
+export interface ColorPresetColors {
+  nodeColor: string;
+  edgeColor: string;
+  sphereGridColor: string;
+  sphereBaseColor: string;
+  backgroundColor: string;
+}
+
+export const colorPresets: Readonly<Record<ColorPreset, ColorPresetColors>> = {
+  /** デフォルト: ミリタリー HUD シアン */
+  "hud-cyan": {
+    nodeColor: "#00BFFF",
+    edgeColor: "#00BFFF",
+    sphereGridColor: "#00BFFF",
+    sphereBaseColor: "#050810",
+    backgroundColor: "#0D1117",
+  },
+  /** エメラルドグリーン */
+  emerald: {
+    nodeColor: "#00FF87",
+    edgeColor: "#00FF87",
+    sphereGridColor: "#00FF87",
+    sphereBaseColor: "#040D08",
+    backgroundColor: "#0A1510",
+  },
+  /** 琥珀色の警告トーン */
+  amber: {
+    nodeColor: "#FFB000",
+    edgeColor: "#FFB000",
+    sphereGridColor: "#FFB000",
+    sphereBaseColor: "#100A02",
+    backgroundColor: "#15100A",
+  },
+  /** 冷青白のレーダートーン */
+  frost: {
+    nodeColor: "#B0E0FF",
+    edgeColor: "#8EC8F0",
+    sphereGridColor: "#8EC8F0",
+    sphereBaseColor: "#060A10",
+    backgroundColor: "#0A0F18",
+  },
+  /** 赤外線イメージ */
+  infrared: {
+    nodeColor: "#FF3333",
+    edgeColor: "#FF3333",
+    sphereGridColor: "#FF3333",
+    sphereBaseColor: "#100404",
+    backgroundColor: "#150A0A",
+  },
+};
+
 export const defaultParams: Readonly<NodeGardenParams> = {
   nodeCount: 100,
   sphereRadius: 1.0,
@@ -132,7 +187,7 @@ export const defaultParams: Readonly<NodeGardenParams> = {
 
   sphereGridVisible: true,
   sphereGridColor: "#00BFFF",
-  sphereGridOpacity: 0.08,
+  sphereGridOpacity: 0.06,
 
   nodeColor: "#00BFFF",
   edgeColor: "#00BFFF",
