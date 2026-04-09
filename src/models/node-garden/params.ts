@@ -71,8 +71,17 @@ export interface NodeGardenParams {
   /** ブルーム閾値 */
   bloomThreshold: number;
 
+  /** ベース球体の表示 */
+  sphereBaseVisible: boolean;
+  /** ベース球体の色 (hex) */
+  sphereBaseColor: string;
+  /** ベース球体の不透明度 */
+  sphereBaseOpacity: number;
+
   /** 球体グリッド表示 */
   sphereGridVisible: boolean;
+  /** 球体グリッドの色 (hex) */
+  sphereGridColor: string;
   /** 球体グリッドの不透明度 */
   sphereGridOpacity: number;
 
@@ -117,7 +126,12 @@ export const defaultParams: Readonly<NodeGardenParams> = {
   bloomRadius: 0.3,
   bloomThreshold: 0.1,
 
-  sphereGridVisible: false,
+  sphereBaseVisible: true,
+  sphereBaseColor: "#0A0F1A",
+  sphereBaseOpacity: 0.6,
+
+  sphereGridVisible: true,
+  sphereGridColor: "#00BFFF",
   sphereGridOpacity: 0.08,
 
   nodeColor: "#00BFFF",

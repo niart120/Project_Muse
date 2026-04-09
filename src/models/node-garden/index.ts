@@ -72,10 +72,22 @@ export function setup(ctx: RendererContext): ThemeHandle {
   signalPoints.visible = false;
   scene.add(signalPoints);
 
+  // ── ベース球体 (暗色半透明メッシュ) ──
+  const sphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
+  const sphereMat = new THREE.MeshBasicMaterial({
+    color: params.sphereBaseColor,
+    transparent: true,
+    opacity: params.sphereBaseOpacity,
+    side: THREE.FrontSide,
+  });
+  let sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+  sphereMesh.visible = params.sphereBaseVisible;
+  scene.add(sphereMesh);
+
   // ── 球体グリッド ──
   let gridGeo = createSphereGrid(params.sphereRadius, 10, 15, 64);
   const gridMat = new THREE.LineBasicMaterial({
-    color: params.nodeColor,
+    color: params.sphereGridColor,
     transparent: true,
     opacity: params.sphereGridOpacity,
   });
@@ -220,6 +232,14 @@ export function setup(ctx: RendererContext): ThemeHandle {
     gridLines = new THREE.LineSegments(gridGeo, gridMat);
     gridLines.visible = params.sphereGridVisible;
     scene.add(gridLines);
+
+    // ベース球体の半径が変わった場合
+    scene.remove(sphereMesh);
+    sphereMesh.geometry.dispose();
+    const newSphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
+    sphereMesh = new THREE.Mesh(newSphereGeo, sphereMat);
+    sphereMesh.visible = params.sphereBaseVisible;
+    scene.add(sphereMesh);
   }
 
   function rebuildBloom(): void {
@@ -363,19 +383,43 @@ export function setup(ctx: RendererContext): ThemeHandle {
       bloomPipeline?.setThreshold(params.bloomThreshold);
     }).domElement.title = "Luminance threshold for bloom";
 
-  const gridFolder = gui.addFolder("Sphere Grid");
+  const gridFolder = gui.addFolder("Sphere");
+  gridFolder
+    .add(params, "sphereBaseVisible")
+    .name("Base Visible")
+    .onChange(() => {
+      sphereMesh.visible = params.sphereBaseVisible;
+    }).domElement.title = "Show dark base sphere";
+  gridFolder
+    .add(params, "sphereBaseOpacity", 0.05, 1, 0.05)
+    .name("Base Opacity")
+    .onChange(() => {
+      sphereMat.opacity = params.sphereBaseOpacity;
+    }).domElement.title = "Base sphere opacity";
+  gridFolder
+    .addColor(params, "sphereBaseColor")
+    .name("Base Color")
+    .onChange(() => {
+      sphereMat.color.set(params.sphereBaseColor);
+    }).domElement.title = "Base sphere color";
   gridFolder
     .add(params, "sphereGridVisible")
-    .name("Visible")
+    .name("Grid Visible")
     .onChange(() => {
       gridLines.visible = params.sphereGridVisible;
     }).domElement.title = "Show latitude/longitude grid overlay";
   gridFolder
     .add(params, "sphereGridOpacity", 0.01, 0.2, 0.01)
-    .name("Opacity")
+    .name("Grid Opacity")
     .onChange(() => {
       gridMat.opacity = params.sphereGridOpacity;
     }).domElement.title = "Grid line opacity";
+  gridFolder
+    .addColor(params, "sphereGridColor")
+    .name("Grid Color")
+    .onChange(() => {
+      gridMat.color.set(params.sphereGridColor);
+    }).domElement.title = "Grid line color";
 
   const colorsFolder = gui.addFolder("Colors");
   colorsFolder
@@ -384,7 +428,6 @@ export function setup(ctx: RendererContext): ThemeHandle {
     .onChange(() => {
       nodeShader.material.color.set(params.nodeColor);
       signalMat.color.set(params.nodeColor);
-      gridMat.color.set(params.nodeColor);
     }).domElement.title = "Color of the node points";
   colorsFolder
     .addColor(params, "edgeColor")
@@ -441,12 +484,15 @@ export function setup(ctx: RendererContext): ThemeHandle {
       scene.remove(nodeSprite);
       scene.remove(edgeLines);
       scene.remove(signalPoints);
+      scene.remove(sphereMesh);
       scene.remove(gridLines);
       nodeShader.material.dispose();
       lineGeo.dispose();
       lineMat.dispose();
       signalGeo.dispose();
       signalMat.dispose();
+      sphereMesh.geometry.dispose();
+      sphereMat.dispose();
       gridGeo.dispose();
       gridMat.dispose();
     },

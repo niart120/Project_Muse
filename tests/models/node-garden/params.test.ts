@@ -109,4 +109,17 @@ describe("defaultParams", () => {
     expect(defaultParams.sphereGridOpacity).toBeGreaterThanOrEqual(0);
     expect(defaultParams.sphereGridOpacity).toBeLessThanOrEqual(1);
   });
+
+  it("sphereGridColor が有効な hex 文字列", () => {
+    expect(defaultParams.sphereGridColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it("sphereBaseOpacity が 0–1 の範囲", () => {
+    expect(defaultParams.sphereBaseOpacity).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.sphereBaseOpacity).toBeLessThanOrEqual(1);
+  });
+
+  it("sphereBaseColor が有効な hex 文字列", () => {
+    expect(defaultParams.sphereBaseColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
 });
