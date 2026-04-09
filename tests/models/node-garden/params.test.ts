@@ -57,4 +57,56 @@ describe("defaultParams", () => {
     expect(defaultParams.geodesicSegments).toBeGreaterThan(0);
     expect(defaultParams.geodesicSegments % 2).toBe(0);
   });
+
+  // Phase 3 パラメータ
+  it("nodeShape が有効な値", () => {
+    const valid = ["circle", "cross", "diamond", "hexagon"];
+    expect(valid).toContain(defaultParams.nodeShape);
+  });
+
+  it("nodeGlowIntensity が 0–1 の範囲", () => {
+    expect(defaultParams.nodeGlowIntensity).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.nodeGlowIntensity).toBeLessThanOrEqual(1);
+  });
+
+  it("edgeStyle が有効な値", () => {
+    const valid = ["solid", "distance-fade", "pulse", "signal", "breathing"];
+    expect(valid).toContain(defaultParams.edgeStyle);
+  });
+
+  it("pulseSpeed が正の値", () => {
+    expect(defaultParams.pulseSpeed).toBeGreaterThan(0);
+  });
+
+  it("pulseWidth が 0–1 の範囲", () => {
+    expect(defaultParams.pulseWidth).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.pulseWidth).toBeLessThanOrEqual(1);
+  });
+
+  it("signalSpeed が正の値", () => {
+    expect(defaultParams.signalSpeed).toBeGreaterThan(0);
+  });
+
+  it("breathingSpeed が正の値", () => {
+    expect(defaultParams.breathingSpeed).toBeGreaterThan(0);
+  });
+
+  it("bloomStrength が非負", () => {
+    expect(defaultParams.bloomStrength).toBeGreaterThanOrEqual(0);
+  });
+
+  it("bloomRadius が 0–1 の範囲", () => {
+    expect(defaultParams.bloomRadius).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.bloomRadius).toBeLessThanOrEqual(1);
+  });
+
+  it("bloomThreshold が 0–1 の範囲", () => {
+    expect(defaultParams.bloomThreshold).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.bloomThreshold).toBeLessThanOrEqual(1);
+  });
+
+  it("sphereGridOpacity が 0–1 の範囲", () => {
+    expect(defaultParams.sphereGridOpacity).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.sphereGridOpacity).toBeLessThanOrEqual(1);
+  });
 });

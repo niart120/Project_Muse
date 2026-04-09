@@ -18,7 +18,7 @@ async function init(): Promise<void> {
     const delta = clock.getDelta();
     theme.update(delta);
     controls.update();
-    ctx.renderer.render(ctx.scene, ctx.camera);
+    theme.render();
   });
 }
 

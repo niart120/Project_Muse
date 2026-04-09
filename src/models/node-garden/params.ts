@@ -4,6 +4,12 @@ export type EdgeAlgorithm = "distance" | "knn" | "mst" | "gabriel";
 /** エッジ経路の描画方式 */
 export type EdgePathMode = "straight" | "geodesic";
 
+/** ノード形状 */
+export type NodeShape = "circle" | "cross" | "diamond" | "hexagon";
+
+/** エッジ描画スタイル */
+export type EdgeStyle = "solid" | "distance-fade" | "pulse" | "signal" | "breathing";
+
 export interface NodeGardenParams {
   // ── ノード ──
   /** ノード数 (10–200) */
@@ -39,6 +45,37 @@ export interface NodeGardenParams {
   /** エッジの不透明度 (0–1) */
   edgeOpacity: number;
 
+  // ── ビジュアル (Phase 3) ──
+  /** ノード形状 */
+  nodeShape: NodeShape;
+  /** ノードのグロー強度 (0 で無効) */
+  nodeGlowIntensity: number;
+
+  /** エッジ描画スタイル */
+  edgeStyle: EdgeStyle;
+  /** パルス速度 */
+  pulseSpeed: number;
+  /** パルス幅 (0–1) */
+  pulseWidth: number;
+  /** シグナルパケット速度 */
+  signalSpeed: number;
+  /** ブリージング速度 */
+  breathingSpeed: number;
+
+  /** ブルーム有効 */
+  bloomEnabled: boolean;
+  /** ブルーム強度 */
+  bloomStrength: number;
+  /** ブルーム半径 */
+  bloomRadius: number;
+  /** ブルーム閾値 */
+  bloomThreshold: number;
+
+  /** 球体グリッド表示 */
+  sphereGridVisible: boolean;
+  /** 球体グリッドの不透明度 */
+  sphereGridOpacity: number;
+
   // ── カラー ──
   /** ノード色 (hex) */
   nodeColor: string;
@@ -65,6 +102,23 @@ export const defaultParams: Readonly<NodeGardenParams> = {
   edgePathMode: "straight",
   geodesicSegments: 12,
   edgeOpacity: 0.3,
+
+  nodeShape: "circle",
+  nodeGlowIntensity: 0.3,
+
+  edgeStyle: "solid",
+  pulseSpeed: 1.0,
+  pulseWidth: 0.15,
+  signalSpeed: 0.8,
+  breathingSpeed: 0.5,
+
+  bloomEnabled: true,
+  bloomStrength: 0.6,
+  bloomRadius: 0.3,
+  bloomThreshold: 0.1,
+
+  sphereGridVisible: false,
+  sphereGridOpacity: 0.08,
 
   nodeColor: "#00BFFF",
   edgeColor: "#00BFFF",

@@ -1,5 +1,6 @@
 export { setup } from "./index";
-export type { NodeGardenParams, EdgeAlgorithm, EdgePathMode } from "./params";
+export type { ThemeHandle } from "./index";
+export type { NodeGardenParams, EdgeAlgorithm, EdgePathMode, NodeShape, EdgeStyle } from "./params";
 export { defaultParams } from "./params";
 export type { NodeState, EdgeResult } from "./simulation";
 export { createNodeState, updateNodePositions } from "./simulation";
@@ -12,3 +13,12 @@ export {
   computeGabrielEdges,
   geodesicArc,
 } from "./edges";
+export {
+  createNodeShapeMaterial,
+  shapeIndexMap,
+  distanceFadeAlpha,
+  computeBreathingOpacity,
+  createBloomPipeline,
+} from "./shaders";
+export type { BloomPipeline } from "./shaders";
+export { createSphereGrid, computeSphereGridVertexCount } from "./sphere-grid";

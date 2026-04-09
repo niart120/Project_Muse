@@ -4,27 +4,47 @@ import { createGui } from "../../core";
 import { createNodeState, updateNodePositions } from "./simulation";
 import { edgeStrategies, geodesicArc } from "./edges";
 import type { NodeGardenParams } from "./params";
-import type { NodeState } from "./simulation";
+import type { NodeState, EdgeResult } from "./simulation";
 import { defaultParams } from "./params";
+import {
+  createNodeShapeMaterial,
+  shapeIndexMap,
+  applyDistanceFadeColors,
+  computeBreathingOpacity,
+  configureEdgeMaterial,
+  createBloomPipeline,
+} from "./shaders";
+import type { BloomPipeline } from "./shaders";
+import { createSphereGrid } from "./sphere-grid";
+import { InstancedBufferAttribute } from "three/webgpu";
+import { instancedBufferAttribute } from "three/tsl";
 
-export function setup(ctx: RendererContext): { update(delta: number): void; dispose(): void } {
-  const { scene } = ctx;
+export interface ThemeHandle {
+  update(delta: number): void;
+  render(): void;
+  dispose(): void;
+}
+
+export function setup(ctx: RendererContext): ThemeHandle {
+  const { scene, renderer, camera } = ctx;
   const params: NodeGardenParams = { ...defaultParams };
   let state: NodeState = createNodeState(params);
 
   // ── 背景 ──
   scene.background = new THREE.Color(params.backgroundColor);
 
-  // ── ノード (Points) ──
-  let pointsGeo = new THREE.BufferGeometry();
-  pointsGeo.setAttribute("position", new THREE.BufferAttribute(state.positions, 3));
-  const pointsMat = new THREE.PointsMaterial({
-    color: params.nodeColor,
-    size: params.pointSize,
-    sizeAttenuation: true,
-  });
-  let points = new THREE.Points(pointsGeo, pointsMat);
-  scene.add(points);
+  // ── ノード (Sprite + SDF シェーダ) ──
+  const nodeShader = createNodeShapeMaterial(params.nodeColor, params.nodeGlowIntensity);
+  nodeShader.material.color.set(params.nodeColor);
+  nodeShader.shapeUniform.value = shapeIndexMap[params.nodeShape];
+
+  let posAttr = new InstancedBufferAttribute(state.positions, 3);
+  nodeShader.setPositions(posAttr);
+
+  const nodeSprite = new THREE.Sprite(nodeShader.material);
+  nodeSprite.scale.setScalar(params.pointSize * 2);
+  nodeSprite.count = state.nodeCount;
+  scene.add(nodeSprite);
 
   // ── エッジ (LineSegments) ──
   const lineGeo = new THREE.BufferGeometry();
@@ -36,15 +56,57 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
   const edgeLines = new THREE.LineSegments(lineGeo, lineMat);
   scene.add(edgeLines);
 
+  // ── シグナルパケット (Points) ──
+  let signalGeo = new THREE.BufferGeometry();
+  const signalMat = new THREE.PointsMaterial({
+    color: params.nodeColor,
+    size: params.pointSize * 0.5,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.9,
+  });
+  let signalPoints = new THREE.Points(signalGeo, signalMat);
+  signalPoints.visible = false;
+  scene.add(signalPoints);
+
+  // ── 球体グリッド ──
+  let gridGeo = createSphereGrid(params.sphereRadius, 10, 15, 64);
+  const gridMat = new THREE.LineBasicMaterial({
+    color: params.nodeColor,
+    transparent: true,
+    opacity: params.sphereGridOpacity,
+  });
+  let gridLines = new THREE.LineSegments(gridGeo, gridMat);
+  gridLines.visible = params.sphereGridVisible;
+  scene.add(gridLines);
+
+  // ── ブルーム ──
+  let bloomPipeline: BloomPipeline | null = null;
+  if (params.bloomEnabled) {
+    bloomPipeline = createBloomPipeline(
+      renderer,
+      scene,
+      camera,
+      params.bloomStrength,
+      params.bloomRadius,
+      params.bloomThreshold,
+    );
+  }
+
+  // ── 累積時間 (エッジアニメーション用) ──
+  let elapsed = 0;
+  let lastEdgeResult: EdgeResult | null = null;
+
   // ── ヘルパー ──
   function syncEdges(): void {
     const strategy = edgeStrategies[params.edgeAlgorithm];
-    const { pairs, count } = strategy(state, params);
+    const result = strategy(state, params);
+    const { pairs, count } = result;
+    lastEdgeResult = result;
 
     if (params.edgePathMode === "geodesic") {
-      // 測地線弧モード: 各エッジを弧で補間
       const segs = params.geodesicSegments;
-      const vertsPerEdge = (segs + 1) * 2 - 2; // 線分セグメント数 × 2 頂点
+      const vertsPerEdge = (segs + 1) * 2 - 2;
       const maxVerts = count * vertsPerEdge * 3;
       const verts = new Float32Array(maxVerts);
       let offset = 0;
@@ -64,7 +126,6 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
         ];
         const arc = geodesicArc(p1, p2, params.sphereRadius, segs);
         const arcPoints = arc.length / 3;
-        // LineSegments: 各セグメント [p_i, p_{i+1}]
         for (let s = 0; s < arcPoints - 1; s++) {
           verts[offset++] = arc[s * 3];
           verts[offset++] = arc[s * 3 + 1];
@@ -78,7 +139,6 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
       lineGeo.setAttribute("position", new THREE.BufferAttribute(verts.subarray(0, offset), 3));
       lineGeo.setDrawRange(0, offset / 3);
     } else {
-      // 直線モード
       const verts = new Float32Array(count * 2 * 3);
 
       for (let e = 0; e < count; e++) {
@@ -96,17 +156,82 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
       lineGeo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
       lineGeo.setDrawRange(0, count * 2);
     }
+
+    // distance-fade: 頂点カラーで距離フェードを適用
+    if (params.edgeStyle === "distance-fade" && params.edgePathMode === "straight") {
+      applyDistanceFadeColors(lineGeo, result, params);
+    }
+  }
+
+  function syncEdgeStyle(): void {
+    configureEdgeMaterial(lineMat, params.edgeStyle);
+    signalPoints.visible = params.edgeStyle === "signal";
+
+    if (params.edgeStyle !== "distance-fade") {
+      lineMat.color.set(params.edgeColor);
+      lineMat.opacity = params.edgeOpacity;
+    }
+  }
+
+  function updateSignalPackets(): void {
+    if (params.edgeStyle !== "signal" || !lastEdgeResult) {
+      signalPoints.visible = false;
+      return;
+    }
+    signalPoints.visible = true;
+
+    const { pairs, count } = lastEdgeResult;
+    const positions = new Float32Array(count * 3);
+    const t = Math.abs(Math.sin(elapsed * params.signalSpeed));
+
+    for (let e = 0; e < count; e++) {
+      const a = pairs[e * 2];
+      const b = pairs[e * 2 + 1];
+      // パケット位置 = lerp(p1, p2, t) — 各エッジに位相差をつける
+      const phase = (((e * 0.618) % 1.0) + t) % 1.0;
+      positions[e * 3] = state.positions[a * 3] * (1 - phase) + state.positions[b * 3] * phase;
+      positions[e * 3 + 1] =
+        state.positions[a * 3 + 1] * (1 - phase) + state.positions[b * 3 + 1] * phase;
+      positions[e * 3 + 2] =
+        state.positions[a * 3 + 2] * (1 - phase) + state.positions[b * 3 + 2] * phase;
+    }
+
+    signalGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    signalGeo.setDrawRange(0, count);
   }
 
   function rebuildSim(): void {
     state = createNodeState(params);
 
-    scene.remove(points);
-    pointsGeo.dispose();
-    pointsGeo = new THREE.BufferGeometry();
-    pointsGeo.setAttribute("position", new THREE.BufferAttribute(state.positions, 3));
-    points = new THREE.Points(pointsGeo, pointsMat);
-    scene.add(points);
+    posAttr = new InstancedBufferAttribute(state.positions, 3);
+    nodeShader.material.positionNode = instancedBufferAttribute(posAttr);
+
+    // Sprite の count を更新
+    nodeSprite.count = state.nodeCount;
+
+    // 球体グリッドの半径が変わった場合
+    scene.remove(gridLines);
+    gridGeo.dispose();
+    gridGeo = createSphereGrid(params.sphereRadius, 10, 15, 64);
+    gridLines = new THREE.LineSegments(gridGeo, gridMat);
+    gridLines.visible = params.sphereGridVisible;
+    scene.add(gridLines);
+  }
+
+  function rebuildBloom(): void {
+    bloomPipeline?.dispose();
+    bloomPipeline = null;
+
+    if (params.bloomEnabled) {
+      bloomPipeline = createBloomPipeline(
+        renderer,
+        scene,
+        camera,
+        params.bloomStrength,
+        params.bloomRadius,
+        params.bloomThreshold,
+      );
+    }
   }
 
   // ── GUI ──
@@ -131,7 +256,7 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
     .add(params, "pointSize", 0.01, 0.2, 0.005)
     .name("Point Size")
     .onChange(() => {
-      pointsMat.size = params.pointSize;
+      nodeSprite.scale.setScalar(params.pointSize * 2);
     }).domElement.title = "Visual size of each node point";
 
   const motionFolder = gui.addFolder("Motion");
@@ -182,12 +307,80 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
   }
   syncAlgorithmGui();
 
+  // ── Visual (Phase 3) ──
+  const visualFolder = gui.addFolder("Visual");
+  visualFolder
+    .add(params, "nodeShape", ["circle", "cross", "diamond", "hexagon"])
+    .name("Node Shape")
+    .onChange(() => {
+      nodeShader.shapeUniform.value = shapeIndexMap[params.nodeShape];
+    }).domElement.title = "SDF shape for node rendering";
+  visualFolder
+    .add(params, "nodeGlowIntensity", 0, 1, 0.05)
+    .name("Node Glow")
+    .onChange(() => {
+      nodeShader.glowUniform.value = params.nodeGlowIntensity;
+    }).domElement.title = "Glow intensity around nodes";
+
+  const edgeStyleFolder = gui.addFolder("Edge Style");
+  edgeStyleFolder
+    .add(params, "edgeStyle", ["solid", "distance-fade", "pulse", "signal", "breathing"])
+    .name("Style")
+    .onChange(() => syncEdgeStyle()).domElement.title = "Edge rendering style";
+  edgeStyleFolder.add(params, "pulseSpeed", 0.1, 5, 0.1).name("Pulse Speed").domElement.title =
+    "Speed of pulse animation along edges";
+  edgeStyleFolder.add(params, "signalSpeed", 0.1, 3, 0.1).name("Signal Speed").domElement.title =
+    "Speed of signal packets traveling along edges";
+  edgeStyleFolder
+    .add(params, "breathingSpeed", 0.1, 2, 0.05)
+    .name("Breath Speed").domElement.title = "Breathing animation speed (sine wave)";
+
+  const bloomFolder = gui.addFolder("Bloom");
+  bloomFolder
+    .add(params, "bloomEnabled")
+    .name("Enabled")
+    .onChange(() => rebuildBloom()).domElement.title = "Toggle bloom post-processing";
+  bloomFolder
+    .add(params, "bloomStrength", 0, 2, 0.05)
+    .name("Strength")
+    .onChange(() => {
+      bloomPipeline?.setStrength(params.bloomStrength);
+    }).domElement.title = "Bloom intensity";
+  bloomFolder
+    .add(params, "bloomRadius", 0, 1, 0.05)
+    .name("Radius")
+    .onChange(() => {
+      bloomPipeline?.setRadius(params.bloomRadius);
+    }).domElement.title = "Bloom blur radius";
+  bloomFolder
+    .add(params, "bloomThreshold", 0, 1, 0.05)
+    .name("Threshold")
+    .onChange(() => {
+      bloomPipeline?.setThreshold(params.bloomThreshold);
+    }).domElement.title = "Luminance threshold for bloom";
+
+  const gridFolder = gui.addFolder("Sphere Grid");
+  gridFolder
+    .add(params, "sphereGridVisible")
+    .name("Visible")
+    .onChange(() => {
+      gridLines.visible = params.sphereGridVisible;
+    }).domElement.title = "Show latitude/longitude grid overlay";
+  gridFolder
+    .add(params, "sphereGridOpacity", 0.01, 0.2, 0.01)
+    .name("Opacity")
+    .onChange(() => {
+      gridMat.opacity = params.sphereGridOpacity;
+    }).domElement.title = "Grid line opacity";
+
   const colorsFolder = gui.addFolder("Colors");
   colorsFolder
     .addColor(params, "nodeColor")
     .name("Node")
     .onChange(() => {
-      pointsMat.color.set(params.nodeColor);
+      nodeShader.material.color.set(params.nodeColor);
+      signalMat.color.set(params.nodeColor);
+      gridMat.color.set(params.nodeColor);
     }).domElement.title = "Color of the node points";
   colorsFolder
     .addColor(params, "edgeColor")
@@ -202,21 +395,56 @@ export function setup(ctx: RendererContext): { update(delta: number): void; disp
       scene.background = new THREE.Color(params.backgroundColor);
     }).domElement.title = "Scene background color";
 
+  syncEdgeStyle();
+
   // ── 公開 API ──
   return {
     update(delta: number): void {
+      elapsed += delta;
       updateNodePositions(state, params, delta);
-      pointsGeo.attributes.position.needsUpdate = true;
+
+      // ノード位置の更新シグナル
+      posAttr.needsUpdate = true;
+
       syncEdges();
+
+      // エッジスタイルのアニメーション
+      if (params.edgeStyle === "breathing") {
+        lineMat.opacity = computeBreathingOpacity(
+          params.edgeOpacity,
+          elapsed,
+          params.breathingSpeed,
+        );
+      } else if (params.edgeStyle === "pulse") {
+        // パルス: 不透明度をフレームごとに時間ベースで変調
+        const pulse = 0.5 + 0.5 * Math.sin(elapsed * params.pulseSpeed * Math.PI * 2);
+        lineMat.opacity =
+          params.edgeOpacity * (params.pulseWidth + (1 - params.pulseWidth) * pulse);
+      }
+
+      updateSignalPackets();
+    },
+    render(): void {
+      if (bloomPipeline) {
+        bloomPipeline.pipeline.render();
+      } else {
+        renderer.render(scene, camera);
+      }
     },
     dispose(): void {
       gui.destroy();
-      scene.remove(points);
+      bloomPipeline?.dispose();
+      scene.remove(nodeSprite);
       scene.remove(edgeLines);
-      pointsGeo.dispose();
-      pointsMat.dispose();
+      scene.remove(signalPoints);
+      scene.remove(gridLines);
+      nodeShader.material.dispose();
       lineGeo.dispose();
       lineMat.dispose();
+      signalGeo.dispose();
+      signalMat.dispose();
+      gridGeo.dispose();
+      gridMat.dispose();
     },
   };
 }
