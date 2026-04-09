@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { defaultParams } from "../../../src/models/node-garden/params";
+import { defaultParams, colorPresets } from "../../../src/models/node-garden/params";
+import type { ColorPreset } from "../../../src/models/node-garden/params";
 
 describe("defaultParams", () => {
   it("nodeCount が正の整数", () => {
@@ -56,5 +57,111 @@ describe("defaultParams", () => {
   it("geodesicSegments が正の偶数", () => {
     expect(defaultParams.geodesicSegments).toBeGreaterThan(0);
     expect(defaultParams.geodesicSegments % 2).toBe(0);
+  });
+
+  // Phase 3 パラメータ
+  it("nodeShape が有効な値", () => {
+    const valid = ["circle", "cross", "diamond", "hexagon"];
+    expect(valid).toContain(defaultParams.nodeShape);
+  });
+
+  it("nodeGlowIntensity が 0–1 の範囲", () => {
+    expect(defaultParams.nodeGlowIntensity).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.nodeGlowIntensity).toBeLessThanOrEqual(1);
+  });
+
+  it("edgeStyle が有効な値", () => {
+    const valid = ["solid", "distance-fade", "pulse", "signal", "breathing"];
+    expect(valid).toContain(defaultParams.edgeStyle);
+  });
+
+  it("pulseSpeed が正の値", () => {
+    expect(defaultParams.pulseSpeed).toBeGreaterThan(0);
+  });
+
+  it("pulseWidth が 0–1 の範囲", () => {
+    expect(defaultParams.pulseWidth).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.pulseWidth).toBeLessThanOrEqual(1);
+  });
+
+  it("signalSpeed が正の値", () => {
+    expect(defaultParams.signalSpeed).toBeGreaterThan(0);
+  });
+
+  it("breathingSpeed が正の値", () => {
+    expect(defaultParams.breathingSpeed).toBeGreaterThan(0);
+  });
+
+  it("bloomStrength が非負", () => {
+    expect(defaultParams.bloomStrength).toBeGreaterThanOrEqual(0);
+  });
+
+  it("bloomRadius が 0–1 の範囲", () => {
+    expect(defaultParams.bloomRadius).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.bloomRadius).toBeLessThanOrEqual(1);
+  });
+
+  it("bloomThreshold が 0–1 の範囲", () => {
+    expect(defaultParams.bloomThreshold).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.bloomThreshold).toBeLessThanOrEqual(1);
+  });
+
+  it("sphereGridOpacity が 0–1 の範囲", () => {
+    expect(defaultParams.sphereGridOpacity).toBeGreaterThanOrEqual(0);
+    expect(defaultParams.sphereGridOpacity).toBeLessThanOrEqual(1);
+  });
+
+  it("sphereGridColor が有効な hex 文字列", () => {
+    expect(defaultParams.sphereGridColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it("sphereBaseMode が有効な値", () => {
+    const valid = ["translucent", "opaque", "none"];
+    expect(valid).toContain(defaultParams.sphereBaseMode);
+  });
+
+  it("sphereBaseRadiusRatio が 0.9–1.0 の範囲", () => {
+    expect(defaultParams.sphereBaseRadiusRatio).toBeGreaterThanOrEqual(0.9);
+    expect(defaultParams.sphereBaseRadiusRatio).toBeLessThanOrEqual(1.0);
+  });
+
+  it("sphereBaseColor が有効な hex 文字列", () => {
+    expect(defaultParams.sphereBaseColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it("sphereBaseColor と backgroundColor が異なる", () => {
+    expect(defaultParams.sphereBaseColor).not.toBe(defaultParams.backgroundColor);
+  });
+});
+
+describe("colorPresets", () => {
+  const presetNames: ColorPreset[] = ["hud-cyan", "emerald", "amber", "frost", "infrared"];
+  const hexPattern = /^#[0-9a-fA-F]{6}$/;
+
+  it("全プリセットが定義されている", () => {
+    for (const name of presetNames) {
+      expect(colorPresets[name]).toBeDefined();
+    }
+  });
+
+  it.each(presetNames)("%s: 全色が有効な hex 文字列", (name) => {
+    const preset = colorPresets[name];
+    expect(preset.nodeColor).toMatch(hexPattern);
+    expect(preset.edgeColor).toMatch(hexPattern);
+    expect(preset.sphereGridColor).toMatch(hexPattern);
+    expect(preset.sphereBaseColor).toMatch(hexPattern);
+    expect(preset.backgroundColor).toMatch(hexPattern);
+  });
+
+  it.each(presetNames)("%s: sphereBaseColor と backgroundColor が異なる", (name) => {
+    const preset = colorPresets[name];
+    expect(preset.sphereBaseColor).not.toBe(preset.backgroundColor);
+  });
+
+  it("hud-cyan プリセットが defaultParams と一致する", () => {
+    const cyan = colorPresets["hud-cyan"];
+    expect(cyan.nodeColor).toBe(defaultParams.nodeColor);
+    expect(cyan.edgeColor).toBe(defaultParams.edgeColor);
+    expect(cyan.backgroundColor).toBe(defaultParams.backgroundColor);
   });
 });
