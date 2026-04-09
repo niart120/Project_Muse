@@ -77,10 +77,12 @@ export function setup(ctx: RendererContext): ThemeHandle {
     color: params.sphereBaseColor,
     transparent: params.sphereBaseMode === "translucent",
     opacity: params.sphereBaseMode === "translucent" ? 0.6 : 1.0,
+    depthWrite: false,
     side: THREE.FrontSide,
   });
   let sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
   sphereMesh.visible = params.sphereBaseMode !== "none";
+  sphereMesh.renderOrder = -1;
   scene.add(sphereMesh);
 
   // ── 球体グリッド ──
@@ -238,6 +240,7 @@ export function setup(ctx: RendererContext): ThemeHandle {
     const newSphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
     sphereMesh = new THREE.Mesh(newSphereGeo, sphereMat);
     sphereMesh.visible = params.sphereBaseMode !== "none";
+    sphereMesh.renderOrder = -1;
     scene.add(sphereMesh);
   }
 
