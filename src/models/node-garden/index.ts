@@ -77,12 +77,12 @@ export function setup(ctx: RendererContext): ThemeHandle {
     color: params.sphereBaseColor,
     transparent: params.sphereBaseMode === "translucent",
     opacity: params.sphereBaseMode === "translucent" ? 0.6 : 1.0,
-    depthWrite: false,
+    depthWrite: params.sphereBaseMode === "opaque",
     side: THREE.FrontSide,
   });
   let sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
   sphereMesh.visible = params.sphereBaseMode !== "none";
-  sphereMesh.renderOrder = -1;
+  sphereMesh.renderOrder = params.sphereBaseMode === "opaque" ? 0 : -1;
   scene.add(sphereMesh);
 
   // ── 球体グリッド ──
@@ -240,7 +240,7 @@ export function setup(ctx: RendererContext): ThemeHandle {
     const newSphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
     sphereMesh = new THREE.Mesh(newSphereGeo, sphereMat);
     sphereMesh.visible = params.sphereBaseMode !== "none";
-    sphereMesh.renderOrder = -1;
+    sphereMesh.renderOrder = params.sphereBaseMode === "opaque" ? 0 : -1;
     scene.add(sphereMesh);
   }
 
@@ -396,6 +396,8 @@ export function setup(ctx: RendererContext): ThemeHandle {
         sphereMesh.visible = true;
         sphereMat.transparent = params.sphereBaseMode === "translucent";
         sphereMat.opacity = params.sphereBaseMode === "translucent" ? 0.6 : 1.0;
+        sphereMat.depthWrite = params.sphereBaseMode === "opaque";
+        sphereMesh.renderOrder = params.sphereBaseMode === "opaque" ? 0 : -1;
         sphereMat.needsUpdate = true;
       }
     }).domElement.title = "Base sphere display mode: translucent / opaque / none";
