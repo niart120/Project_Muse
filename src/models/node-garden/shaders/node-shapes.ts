@@ -1,6 +1,20 @@
-import { Fn, float, uniform, vec4, abs, min, smoothstep, exp, length, select, uv } from "three/tsl";
+import {
+  Fn,
+  float,
+  uniform,
+  vec4,
+  vec3,
+  abs,
+  min,
+  max,
+  smoothstep,
+  exp,
+  length,
+  select,
+  uv,
+} from "three/tsl";
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
-import { PointsNodeMaterial } from "three/webgpu";
+import { PointsNodeMaterial, Color } from "three/webgpu";
 import type { NodeShape } from "../params";
 
 const shapeIndexMap: Record<NodeShape, number> = {
@@ -53,9 +67,11 @@ export function createNodeShapeMaterial(
   material: PointsNodeMaterial;
   shapeUniform: UniformNode<"float", number>;
   glowUniform: UniformNode<"float", number>;
+  colorUniform: UniformNode<"color", Color>;
 } {
   const shapeUniform = uniform(0);
   const glowUniform = uniform(glowIntensity);
+  const colorUniform = uniform(new Color(color));
   const material = new PointsNodeMaterial();
   material.transparent = true;
   material.depthWrite = false;
@@ -84,12 +100,14 @@ export function createNodeShapeMaterial(
     // アンチエイリアスされたエッジ
     const edgeAlpha = smoothstep(float(0.02), float(-0.02), dist);
 
-    // グロー: 外縁から減衰する光彩
-    const glowAlpha = exp(dist.negate().mul(4.0)).mul(glowUniform);
+    // グロー: 外縁のみ (dist > 0) で減衰する光彩
+    const outerDist = max(dist, float(0.0));
+    const glowAlpha = exp(outerDist.negate().mul(6.0)).mul(glowUniform);
 
     const totalAlpha = edgeAlpha.add(glowAlpha).clamp(0, 1);
+    const rgb = vec3(colorUniform);
 
-    return vec4(1.0, 1.0, 1.0, totalAlpha);
+    return vec4(rgb, totalAlpha);
   });
 
   material.colorNode = colorNode();
@@ -98,5 +116,6 @@ export function createNodeShapeMaterial(
     material,
     shapeUniform,
     glowUniform,
+    colorUniform,
   };
 }

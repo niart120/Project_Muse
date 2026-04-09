@@ -114,12 +114,16 @@ describe("defaultParams", () => {
     expect(defaultParams.sphereGridColor).toMatch(/^#[0-9a-fA-F]{6}$/);
   });
 
-  it("sphereBaseOpacity が 0–1 の範囲", () => {
-    expect(defaultParams.sphereBaseOpacity).toBeGreaterThanOrEqual(0);
-    expect(defaultParams.sphereBaseOpacity).toBeLessThanOrEqual(1);
+  it("sphereBaseMode が有効な値", () => {
+    const valid = ["translucent", "opaque", "none"];
+    expect(valid).toContain(defaultParams.sphereBaseMode);
   });
 
   it("sphereBaseColor が有効な hex 文字列", () => {
     expect(defaultParams.sphereBaseColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+
+  it("sphereBaseColor と backgroundColor が異なる", () => {
+    expect(defaultParams.sphereBaseColor).not.toBe(defaultParams.backgroundColor);
   });
 });

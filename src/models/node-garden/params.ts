@@ -10,6 +10,9 @@ export type NodeShape = "circle" | "cross" | "diamond" | "hexagon";
 /** エッジ描画スタイル */
 export type EdgeStyle = "solid" | "distance-fade" | "pulse" | "signal" | "breathing";
 
+/** ベース球体の表示モード */
+export type SphereBaseMode = "translucent" | "opaque" | "none";
+
 export interface NodeGardenParams {
   // ── ノード ──
   /** ノード数 (10–200) */
@@ -71,12 +74,10 @@ export interface NodeGardenParams {
   /** ブルーム閾値 */
   bloomThreshold: number;
 
-  /** ベース球体の表示 */
-  sphereBaseVisible: boolean;
+  /** ベース球体の表示モード */
+  sphereBaseMode: SphereBaseMode;
   /** ベース球体の色 (hex) */
   sphereBaseColor: string;
-  /** ベース球体の不透明度 */
-  sphereBaseOpacity: number;
 
   /** 球体グリッド表示 */
   sphereGridVisible: boolean;
@@ -126,9 +127,8 @@ export const defaultParams: Readonly<NodeGardenParams> = {
   bloomRadius: 0.3,
   bloomThreshold: 0.1,
 
-  sphereBaseVisible: true,
-  sphereBaseColor: "#0A0F1A",
-  sphereBaseOpacity: 0.6,
+  sphereBaseMode: "translucent",
+  sphereBaseColor: "#050810",
 
   sphereGridVisible: true,
   sphereGridColor: "#00BFFF",
@@ -136,5 +136,5 @@ export const defaultParams: Readonly<NodeGardenParams> = {
 
   nodeColor: "#00BFFF",
   edgeColor: "#00BFFF",
-  backgroundColor: "#0A0F1A",
+  backgroundColor: "#0D1117",
 };

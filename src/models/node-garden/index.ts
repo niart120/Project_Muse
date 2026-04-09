@@ -37,7 +37,6 @@ export function setup(ctx: RendererContext): ThemeHandle {
   // PointsNodeMaterial + Sprite + positionNode で、球面上の各位置に
   // 個別の SDF スプライトをインスタンス描画する。
   const nodeShader = createNodeShapeMaterial(params.nodeColor, params.nodeGlowIntensity);
-  nodeShader.material.color.set(params.nodeColor);
   nodeShader.material.size = params.pointSize;
   nodeShader.material.sizeAttenuation = true;
   nodeShader.shapeUniform.value = shapeIndexMap[params.nodeShape];
@@ -72,16 +71,16 @@ export function setup(ctx: RendererContext): ThemeHandle {
   signalPoints.visible = false;
   scene.add(signalPoints);
 
-  // ── ベース球体 (暗色半透明メッシュ) ──
+  // ── ベース球体 ──
   const sphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
   const sphereMat = new THREE.MeshBasicMaterial({
     color: params.sphereBaseColor,
-    transparent: true,
-    opacity: params.sphereBaseOpacity,
+    transparent: params.sphereBaseMode === "translucent",
+    opacity: params.sphereBaseMode === "translucent" ? 0.6 : 1.0,
     side: THREE.FrontSide,
   });
   let sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
-  sphereMesh.visible = params.sphereBaseVisible;
+  sphereMesh.visible = params.sphereBaseMode !== "none";
   scene.add(sphereMesh);
 
   // ── 球体グリッド ──
@@ -238,7 +237,7 @@ export function setup(ctx: RendererContext): ThemeHandle {
     sphereMesh.geometry.dispose();
     const newSphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
     sphereMesh = new THREE.Mesh(newSphereGeo, sphereMat);
-    sphereMesh.visible = params.sphereBaseVisible;
+    sphereMesh.visible = params.sphereBaseMode !== "none";
     scene.add(sphereMesh);
   }
 
@@ -385,17 +384,18 @@ export function setup(ctx: RendererContext): ThemeHandle {
 
   const gridFolder = gui.addFolder("Sphere");
   gridFolder
-    .add(params, "sphereBaseVisible")
-    .name("Base Visible")
+    .add(params, "sphereBaseMode", ["translucent", "opaque", "none"])
+    .name("Base Mode")
     .onChange(() => {
-      sphereMesh.visible = params.sphereBaseVisible;
-    }).domElement.title = "Show dark base sphere";
-  gridFolder
-    .add(params, "sphereBaseOpacity", 0.05, 1, 0.05)
-    .name("Base Opacity")
-    .onChange(() => {
-      sphereMat.opacity = params.sphereBaseOpacity;
-    }).domElement.title = "Base sphere opacity";
+      if (params.sphereBaseMode === "none") {
+        sphereMesh.visible = false;
+      } else {
+        sphereMesh.visible = true;
+        sphereMat.transparent = params.sphereBaseMode === "translucent";
+        sphereMat.opacity = params.sphereBaseMode === "translucent" ? 0.6 : 1.0;
+        sphereMat.needsUpdate = true;
+      }
+    }).domElement.title = "Base sphere display mode: translucent / opaque / none";
   gridFolder
     .addColor(params, "sphereBaseColor")
     .name("Base Color")
@@ -426,7 +426,7 @@ export function setup(ctx: RendererContext): ThemeHandle {
     .addColor(params, "nodeColor")
     .name("Node")
     .onChange(() => {
-      nodeShader.material.color.set(params.nodeColor);
+      nodeShader.colorUniform.value.set(params.nodeColor);
       signalMat.color.set(params.nodeColor);
     }).domElement.title = "Color of the node points";
   colorsFolder

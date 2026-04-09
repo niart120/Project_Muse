@@ -1,6 +1,13 @@
 export { setup } from "./index";
 export type { ThemeHandle } from "./index";
-export type { NodeGardenParams, EdgeAlgorithm, EdgePathMode, NodeShape, EdgeStyle } from "./params";
+export type {
+  NodeGardenParams,
+  EdgeAlgorithm,
+  EdgePathMode,
+  NodeShape,
+  EdgeStyle,
+  SphereBaseMode,
+} from "./params";
 export { defaultParams } from "./params";
 export type { NodeState, EdgeResult } from "./simulation";
 export { createNodeState, updateNodePositions } from "./simulation";
