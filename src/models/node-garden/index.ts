@@ -33,16 +33,19 @@ export function setup(ctx: RendererContext): ThemeHandle {
   // ── 背景 ──
   scene.background = new THREE.Color(params.backgroundColor);
 
-  // ── ノード (Sprite + SDF シェーダ) ──
+  // ── ノード (Sprite×N インスタンシング + SDF シェーダ) ──
+  // PointsNodeMaterial + Sprite + positionNode で、球面上の各位置に
+  // 個別の SDF スプライトをインスタンス描画する。
   const nodeShader = createNodeShapeMaterial(params.nodeColor, params.nodeGlowIntensity);
   nodeShader.material.color.set(params.nodeColor);
+  nodeShader.material.size = params.pointSize;
+  nodeShader.material.sizeAttenuation = true;
   nodeShader.shapeUniform.value = shapeIndexMap[params.nodeShape];
 
   let posAttr = new InstancedBufferAttribute(state.positions, 3);
-  nodeShader.setPositions(posAttr);
+  nodeShader.material.positionNode = instancedBufferAttribute(posAttr);
 
   const nodeSprite = new THREE.Sprite(nodeShader.material);
-  nodeSprite.scale.setScalar(params.pointSize * 2);
   nodeSprite.count = state.nodeCount;
   scene.add(nodeSprite);
 
@@ -205,8 +208,9 @@ export function setup(ctx: RendererContext): ThemeHandle {
 
     posAttr = new InstancedBufferAttribute(state.positions, 3);
     nodeShader.material.positionNode = instancedBufferAttribute(posAttr);
+    nodeShader.material.needsUpdate = true;
 
-    // Sprite の count を更新
+    // Sprite のインスタンス数を更新
     nodeSprite.count = state.nodeCount;
 
     // 球体グリッドの半径が変わった場合
@@ -256,7 +260,7 @@ export function setup(ctx: RendererContext): ThemeHandle {
     .add(params, "pointSize", 0.01, 0.2, 0.005)
     .name("Point Size")
     .onChange(() => {
-      nodeSprite.scale.setScalar(params.pointSize * 2);
+      nodeShader.material.size = params.pointSize;
     }).domElement.title = "Visual size of each node point";
 
   const motionFolder = gui.addFolder("Motion");

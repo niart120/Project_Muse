@@ -1,7 +1,6 @@
 import { Fn, float, uniform, vec4, abs, min, smoothstep, exp, length, select, uv } from "three/tsl";
 import type UniformNode from "three/src/nodes/core/UniformNode.js";
-import { SpriteNodeMaterial, type InstancedBufferAttribute } from "three/webgpu";
-import { instancedBufferAttribute } from "three/tsl";
+import { PointsNodeMaterial } from "three/webgpu";
 import type { NodeShape } from "../params";
 
 const shapeIndexMap: Record<NodeShape, number> = {
@@ -42,26 +41,24 @@ const sdfHexagon = Fn(([coord_immutable]: [ReturnType<typeof uv>]) => {
 });
 
 /**
- * SpriteNodeMaterial を生成し、SDF ベースの HUD ノード形状を描画する。
+ * PointsNodeMaterial を生成し、SDF ベースの HUD ノード形状を描画する。
+ * Sprite + PointsNodeMaterial + positionNode でインスタンシングし、
+ * 球面上の各ノード位置に個別のスプライトを配置する。
  * shapeUniform で形状を切り替え可能。
  */
 export function createNodeShapeMaterial(
   color: string,
   glowIntensity: number,
 ): {
-  material: SpriteNodeMaterial;
+  material: PointsNodeMaterial;
   shapeUniform: UniformNode<"float", number>;
   glowUniform: UniformNode<"float", number>;
-  setPositions: (attr: InstancedBufferAttribute) => void;
 } {
   const shapeUniform = uniform(0);
   const glowUniform = uniform(glowIntensity);
-  const material = new SpriteNodeMaterial();
+  const material = new PointsNodeMaterial();
   material.transparent = true;
   material.depthWrite = false;
-
-  // positionNode は後から setPositions で設定
-  let positionNodeSet = false;
 
   const colorNode = Fn(() => {
     // uv: 0..1 → -1..1 の座標系に変換
@@ -101,11 +98,5 @@ export function createNodeShapeMaterial(
     material,
     shapeUniform,
     glowUniform,
-    setPositions(attr: InstancedBufferAttribute) {
-      if (!positionNodeSet) {
-        material.positionNode = instancedBufferAttribute(attr);
-        positionNodeSet = true;
-      }
-    },
   };
 }
