@@ -72,7 +72,11 @@ export function setup(ctx: RendererContext): ThemeHandle {
   scene.add(signalPoints);
 
   // ── ベース球体 ──
-  const sphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
+  const sphereGeo = new THREE.SphereGeometry(
+    params.sphereRadius * params.sphereBaseRadiusRatio,
+    48,
+    32,
+  );
   const sphereMat = new THREE.MeshBasicMaterial({
     color: params.sphereBaseColor,
     transparent: params.sphereBaseMode === "translucent",
@@ -237,7 +241,11 @@ export function setup(ctx: RendererContext): ThemeHandle {
     // ベース球体の半径が変わった場合
     scene.remove(sphereMesh);
     sphereMesh.geometry.dispose();
-    const newSphereGeo = new THREE.SphereGeometry(params.sphereRadius, 48, 32);
+    const newSphereGeo = new THREE.SphereGeometry(
+      params.sphereRadius * params.sphereBaseRadiusRatio,
+      48,
+      32,
+    );
     sphereMesh = new THREE.Mesh(newSphereGeo, sphereMat);
     sphereMesh.visible = params.sphereBaseMode !== "none";
     sphereMesh.renderOrder = params.sphereBaseMode === "opaque" ? 0 : -1;
@@ -386,6 +394,23 @@ export function setup(ctx: RendererContext): ThemeHandle {
     }).domElement.title = "Luminance threshold for bloom";
 
   const gridFolder = gui.addFolder("Sphere");
+  gridFolder
+    .add(params, "sphereBaseRadiusRatio", 0.9, 1.0, 0.005)
+    .name("Base Radius Ratio")
+    .onChange(() => {
+      scene.remove(sphereMesh);
+      sphereMesh.geometry.dispose();
+      const geo = new THREE.SphereGeometry(
+        params.sphereRadius * params.sphereBaseRadiusRatio,
+        48,
+        32,
+      );
+      sphereMesh = new THREE.Mesh(geo, sphereMat);
+      sphereMesh.visible = params.sphereBaseMode !== "none";
+      sphereMesh.renderOrder = params.sphereBaseMode === "opaque" ? 0 : -1;
+      scene.add(sphereMesh);
+    }).domElement.title =
+    "Base sphere radius as ratio of node sphere radius (smaller = less edge clipping)";
   gridFolder
     .add(params, "sphereBaseMode", ["translucent", "opaque", "none"])
     .name("Base Mode")

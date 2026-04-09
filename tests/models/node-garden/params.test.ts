@@ -120,6 +120,11 @@ describe("defaultParams", () => {
     expect(valid).toContain(defaultParams.sphereBaseMode);
   });
 
+  it("sphereBaseRadiusRatio が 0.9–1.0 の範囲", () => {
+    expect(defaultParams.sphereBaseRadiusRatio).toBeGreaterThanOrEqual(0.9);
+    expect(defaultParams.sphereBaseRadiusRatio).toBeLessThanOrEqual(1.0);
+  });
+
   it("sphereBaseColor が有効な hex 文字列", () => {
     expect(defaultParams.sphereBaseColor).toMatch(/^#[0-9a-fA-F]{6}$/);
   });

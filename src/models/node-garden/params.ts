@@ -76,6 +76,8 @@ export interface NodeGardenParams {
 
   /** ベース球体の表示モード */
   sphereBaseMode: SphereBaseMode;
+  /** ベース球体の半径比率 (sphereRadius に対する比率, 0.9–1.0) */
+  sphereBaseRadiusRatio: number;
   /** ベース球体の色 (hex) */
   sphereBaseColor: string;
 
@@ -183,6 +185,7 @@ export const defaultParams: Readonly<NodeGardenParams> = {
   bloomThreshold: 0.1,
 
   sphereBaseMode: "translucent",
+  sphereBaseRadiusRatio: 0.95,
   sphereBaseColor: "#050810",
 
   sphereGridVisible: true,
